@@ -483,7 +483,7 @@ export async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES, t
 }
 
 export async function callClaude(systemPrompt, messages, maxTokens = 1500) {
-  const res = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
+  const res = await fetchWithRetry("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
