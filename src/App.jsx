@@ -74,7 +74,7 @@ const S = {
   card: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "22px 20px", boxShadow: "0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)" },
   label: { fontFamily: "'Cinzel', serif", color: T.gold, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 8, display: "block", fontWeight: 700 },
   input: { background: "rgba(0,0,0,0.3)", border: `1px solid ${T.border}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "14px 16px", fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", transition: "border-color 0.2s, box-shadow 0.2s", WebkitAppearance: "none" },
-  textarea: { background: "#0d1117", border: `1px solid ${T.border}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "12px 14px", fontFamily: "monospace", outline: "none", width: "100%", boxSizing: "border-box", resize: "vertical", lineHeight: 1.6 },
+  textarea: { background: "rgba(0,0,0,0.3)", border: `1px solid ${T.border}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "12px 14px", fontFamily: "monospace", outline: "none", width: "100%", boxSizing: "border-box", resize: "vertical", lineHeight: 1.6 },
   primaryBtn: { background: `linear-gradient(135deg, ${T.goldBright} 0%, ${T.gold} 100%)`, border: "none", borderRadius: 12, padding: "15px 28px", cursor: "pointer", color: "#060a0f", fontFamily: "'Cinzel', serif", fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", transition: "all 0.2s", WebkitTapHighlightColor: "transparent", minHeight: 52, boxShadow: "0 4px 20px rgba(200,151,58,0.3)" },
   ghostBtn: { background: "rgba(255,255,255,0.03)", border: `1px solid ${T.border}`, borderRadius: 12, color: T.textSub, cursor: "pointer", fontSize: 14, padding: "12px 20px", fontFamily: "inherit", minHeight: 44, WebkitTapHighlightColor: "transparent", transition: "all 0.15s" },
   backBtn: { background: "none", border: "none", color: T.textSub, cursor: "pointer", fontSize: 14, padding: "0 0 18px 0", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6, WebkitTapHighlightColor: "transparent" },
@@ -146,7 +146,7 @@ const WOW_REALMS = {
     "Uldaman","Vashj","Vek'lor","Vek'nilash","Wrathbringer","Xavius","Ysera","Zenedar","Zuluhed",
   ],
   kr: ["Azshara","Burning Legion","Cenarius","Durotan","Executus","Hellscream","Hyjal","Norgannon","Stormrage","Windrunner"],
-  tw: ["Arthas","Arygos","Bleeding Hollow","Chillwind Point","Crystalpine Stinger","Demon Fall Canyon","Demon Soul","Dragonmaw","Draka","Frostmane","Hellscream","Icecrown","Light's Hope","Mnightmare","Order of the Cloud Serpent","Shadowmoon","Skywall","Stormrage","Sundown Marsh","Wrathbringer"],
+  tw: ["Arthas","Arygos","Bleeding Hollow","Chillwind Point","Crystalpine Stinger","Demon Fall Canyon","Demon Soul","Dragonmaw","Draka","Frostmane","Hellscream","Icecrown","Light's Hope","Nightmare","Order of the Cloud Serpent","Shadowmoon","Skywall","Stormrage","Sundown Marsh","Wrathbringer"],
 };
 
 
@@ -899,6 +899,7 @@ export default function Vaultwright() {
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory, loading]);
 
+  // Aliases kept for readability throughout render
   const activeClass = detectedClass;
   const activeSpec  = detectedSpec;
   const classData   = CLASSES.find(c => c.name === activeClass);
@@ -1078,7 +1079,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
           {/* ══ Step 0: Input method ══ */}
           {step === 0 && (
             <div style={S.card} className="fu">
-              <p style={{ color: T.textSub, fontSize: 14, margin: "0 0 20px", lineHeight: 1.6 }}>Choose how to load your character's gear and Vaultwright will do the rest.</p>
+              <p style={{ color: T.textSub, fontSize: 14, margin: "0 0 20px", lineHeight: 1.6, fontWeight: 500 }}>How do you want to load your character?</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <ModeCard icon={Link2} title="Character Lookup" badge="Easiest" badgeColor={T.green}
                   description="Enter your name and realm — we pull your live gear from Raider.IO."
@@ -1226,7 +1227,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
             <div style={S.card} className="fu">
               <button style={S.backBtn} onClick={() => setStep(1)}><ChevronLeft size={16} strokeWidth={2} /> Back</button>
               {activeClass && (
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, padding: "12px 14px", background: "#0d1117", borderRadius: 8, border: `1px solid ${T.border}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, padding: "12px 14px", background: T.bg, borderRadius: 12, border: `1px solid ${T.border}` }}>
                   {classData && <ClassIcon name={classData.name} color={classData.color} size={32} />}
                   <div>
                     <p style={{ color: T.text, fontSize: 15, margin: 0, fontWeight: 600 }}>{activeSpec} {activeClass}</p>
@@ -1263,7 +1264,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
                   <div>
                     <p style={{ color: T.text, fontSize: 14, margin: 0, fontWeight: 600 }}>{activeSpec || "?"} {activeClass || "Unknown"}</p>
                     <p style={{ color: T.textSub, fontSize: 12, margin: "2px 0 0" }}>
-                      {inputMode === "rio" ? "Raider.IO" : "SimC"} · {content.join(", ") || "All content"}
+                      {inputMode === "rio" ? "Raider.IO" : "SimC"} · {content.length > 0 ? (content.length > 2 ? `${content.slice(0,2).join(", ")} +${content.length-2}` : content.join(", ")) : "All content"}
                     </p>
                   </div>
                 </div>
@@ -1271,10 +1272,10 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
               </div>
 
               {/* Tabs */}
-              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                <OracleTab id="analysis" label="Analysis" icon={Sword}    active={oracleMode==="analysis"} onClick={() => setOracleMode("analysis")} />
-                <OracleTab id="vault"    label="Vault"    icon={Trophy}   active={oracleMode==="vault"}    onClick={() => setOracleMode("vault")} />
-                <OracleTab id="weekly"   label="Weekly"   icon={Calendar} active={oracleMode==="weekly"}   onClick={() => setOracleMode("weekly")} />
+              <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                <OracleTab label="Analysis" icon={Sword}    active={oracleMode==="analysis"} onClick={() => setOracleMode("analysis")} />
+                <OracleTab label="Vault"    icon={Trophy}   active={oracleMode==="vault"}    onClick={() => setOracleMode("vault")} />
+                <OracleTab label="Weekly"   icon={Calendar} active={oracleMode==="weekly"}   onClick={() => setOracleMode("weekly")} />
               </div>
 
               {/* Analysis tab */}
@@ -1293,12 +1294,17 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
                     <>
                       {chatHistory.map((msg, i) => (
                         <div key={i} style={S.chatMsg(msg.role)}>
-                          <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, marginBottom: 8, color: msg.role === "user" ? T.goldDim : T.textDim, fontWeight: 700 }}>
+                          <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, marginBottom: 8, color: msg.role === "user" ? T.gold : T.textDim, fontWeight: 700 }}>
                             {msg.role === "user" ? "YOU" : "VAULTWRIGHT"}
                           </p>
                           {msg.role === "user"
                             ? <p style={{ color: T.textSub, fontSize: 14, margin: 0 }}>{msg.display || msg.content}</p>
-                            : <ResponseBlock content={msg.content} />}
+                            : msg.content.startsWith("Error:") ? (
+                              <div>
+                                <p style={{ color: T.red, fontSize: 14, margin: "0 0 10px" }}>{msg.content}</p>
+                                <button style={{ ...S.ghostBtn, fontSize: 13, padding: "8px 16px", minHeight: 36, color: T.gold, borderColor: T.gold }} onClick={sendInitial}>Try again</button>
+                              </div>
+                            ) : <ResponseBlock content={msg.content} />}
                         </div>
                       ))}
                       {loading && (
@@ -1319,7 +1325,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
                         <button style={{ ...S.primaryBtn, padding: "12px 18px", flexShrink: 0, opacity: followUp.trim() ? 1 : 0.45 }} onClick={sendFollowUp} disabled={!followUp.trim()}>Ask</button>
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                        {["Explain my Apex Talent", "Best Embellishment pair?", "Craft this week?", "ilvl vs stats?"].map(q => (
+                        {["Explain my Apex Talent", "Best Embellishments?", "What should I craft?", "When does ilvl beat stats?"].map(q => (
                           <button key={q} style={{ ...S.tag(false), fontSize: 12, padding: "9px 14px", borderRadius: 20 }} onClick={() => setFollowUp(q)}>{q}</button>
                         ))}
                       </div>
@@ -1331,7 +1337,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
               {/* Vault tab */}
               {oracleMode === "vault" && (
                 <div style={S.card}>
-                  <VaultEmptyState />
+                  {!chatHistory.some(m => m.display?.includes("Vault")) && <VaultEmptyState />}
                   {[["Dungeon Slots", [0,1,2]], ["Raid Slots", [3,4,5]], ["World Activity Slots", [6,7,8]]].map(([label, indices]) => (
                     <div key={label}>
                       <p style={{ ...S.label, margin: "14px 0 8px" }}>{label}</p>
@@ -1369,7 +1375,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
               {/* Weekly tab */}
               {oracleMode === "weekly" && (
                 <div style={S.card}>
-                  <WeeklyEmptyState />
+                  {!chatHistory.some(m => m.display === "Weekly Plan") && <WeeklyEmptyState />}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
                     <div>
                       <span style={S.label}>Sparks</span>
