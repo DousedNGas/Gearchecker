@@ -459,7 +459,7 @@ function getSpecKnowledge(activeSpec, activeClass) {
 // ── API helpers ──────────────────────────────────────────────────
 // Fetch wrapper with timeout + retry logic
 
-const DEFAULT_TIMEOUT = 15000; // 15s
+const DEFAULT_TIMEOUT = 30000; // 30s — Claude API can be slow on cold starts
 const MAX_RETRIES = 2;
 
 async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES, timeout = DEFAULT_TIMEOUT) {
@@ -985,7 +985,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
 
   const sendInitial = async () => {
     setLoading(true); setStep(3); setOracleMode("analysis");
-    const msg = `Analyse my ${activeSpec} ${activeClass} gear:\n\n## Stat Priority\nWhat stats I should prioritize and why they synergize with my Vaultwright Talent.\n\n## Biggest Upgrades\nMy weakest slots ranked by impact.\n\n## Crafting Plan\nWhat to craft with Sparks, which Embellishments to pair, and which slots are off-limits.\n\n## Immediate Wins\nFree upgrades, wasted Dawncrests, or anything obviously wrong.`;
+    const msg = `Analyse my ${activeSpec} ${activeClass} gear:\n\n## Stat Priority\nWhat stats I should prioritize and why they synergize with my Apex Talent.\n\n## Biggest Upgrades\nMy weakest slots ranked by impact.\n\n## Crafting Plan\nWhat to craft with Sparks, which Embellishments to pair, and which slots are off-limits.\n\n## Immediate Wins\nFree upgrades, wasted Dawncrests, or anything obviously wrong.`;
     setChatHistory([{ role: "user", content: msg, display: "Gear Analysis" }]);
     try {
       const text = await callClaude(sysPrompt(), [{ role: "user", content: msg }]);
@@ -1012,7 +1012,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
     const filled = vaultItems.filter(v => v.trim());
     if (!filled.length) return;
     setLoading(true);
-    const msg = `I'm looking at my Great Vault. Available picks:\n${filled.map((item,i)=>`${i+1}. ${item}`).join("\n")}\n\nMy gear:\n${buildGearContext()}\n\n## Which pick should I take and why?\nGive a clear #1 recommendation with the mechanical reason. Consider: ilvl upgrade, Tier set progress, stat value for my ${activeSpec} ${activeClass} Vaultwright Talent, and availability from other sources.\n\n## The others\nBrief note on why the other options are lower priority.`;
+    const msg = `I'm looking at my Great Vault. Available picks:\n${filled.map((item,i)=>`${i+1}. ${item}`).join("\n")}\n\nMy gear:\n${buildGearContext()}\n\n## Which pick should I take and why?\nGive a clear #1 recommendation with the mechanical reason. Consider: ilvl upgrade, Tier set progress, stat value for my ${activeSpec} ${activeClass} Apex Talent, and availability from other sources.\n\n## The others\nBrief note on why the other options are lower priority.`;
     const hist = [...chatHistory, { role: "user", content: msg, display: `Vault — ${filled.length} item${filled.length > 1 ? "s" : ""}` }];
     setChatHistory(hist);
     try {
@@ -1319,7 +1319,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
                         <button style={{ ...S.primaryBtn, padding: "12px 18px", flexShrink: 0, opacity: followUp.trim() ? 1 : 0.45 }} onClick={sendFollowUp} disabled={!followUp.trim()}>Ask</button>
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                        {["Explain my Vaultwright Talent", "Best Embellishment pair?", "Craft this week?", "ilvl vs stats?"].map(q => (
+                        {["Explain my Apex Talent", "Best Embellishment pair?", "Craft this week?", "ilvl vs stats?"].map(q => (
                           <button key={q} style={{ ...S.tag(false), fontSize: 12, padding: "9px 14px", borderRadius: 20 }} onClick={() => setFollowUp(q)}>{q}</button>
                         ))}
                       </div>
