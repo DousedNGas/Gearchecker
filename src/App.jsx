@@ -492,7 +492,7 @@ async function callClaude(systemPrompt, messages, maxTokens = 1500) {
       messages,
     }),
   });
-  if (!res.ok) throw new Error(res.status === 429 ? "Rate limit reached — wait 30 seconds and try again." : `API error ${res.status}`);
+  if (!res.ok) throw new Error(res.status === 429 ? "Daily limit reached (5 analyses/day). Come back tomorrow!" : `API error ${res.status}`);
   const data = await res.json();
   return data.content?.map(b => b.text || "").join("") || "No response.";
 }
