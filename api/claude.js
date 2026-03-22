@@ -27,7 +27,6 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: "Daily limit reached (5 analyses/day). Come back tomorrow!" });
   }
 
-  // Parse body — Vercel may deliver it as a string
   let body = req.body;
   if (typeof body === "string") {
     try { body = JSON.parse(body); } catch { return res.status(400).json({ error: "Invalid JSON body" }); }
@@ -39,6 +38,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing or invalid messages field" });
   }
 
+  // system can be a string OR an array of content blocks (with optional cache_control)
+  // Anthropic accepts both formats — pass through as-is
+  const systemPayload = system ?? "";
+
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -46,11 +49,12 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
         "x-api-key": process.env.ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
+        "anthropic-beta": "prompt-caching-2024-07-31",  // enables cache_control blocks
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: max_tokens || 1500,
-        system: system || "",
+        system: systemPayload,
         messages,
       }),
     });
