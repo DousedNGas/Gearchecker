@@ -724,19 +724,33 @@ function GearPreviewGrid({ gear }) {
   const avg = withIlvl.length > 0 ? Math.round(withIlvl.reduce((a, g) => a + parseInt(g.ilvl), 0) / withIlvl.length) : 0;
   return (
     <div style={{ marginTop: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <span style={{ color: T.gold, fontSize: 12, fontFamily: "'Cinzel', serif", letterSpacing: 1 }}>{filled.length} / {gear.length} SLOTS</span>
-        {avg > 0 && <span style={{ color: T.textSub, fontSize: 13 }}>Avg ilvl <IlvlBadge ilvl={avg} /></span>}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <span style={{ color: T.gold, fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5 }}>{filled.length}/{gear.length} SLOTS DETECTED</span>
+        {avg > 0 && <span style={{ color: T.textSub, fontSize: 12 }}>avg <IlvlBadge ilvl={avg} /></span>}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {gear.map((slot, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", borderRadius: 6, background: slot.name ? "rgba(240,180,41,0.06)" : "rgba(255,255,255,0.02)", border: `1px solid ${slot.name ? "rgba(240,180,41,0.18)" : "#21262d"}` }}>
-            <span style={{ color: T.textSub, fontSize: 11, fontFamily: "'Cinzel', serif", flexShrink: 0 }}>{slot.label}</span>
-            {slot.name
-              ? <span style={{ color: "#c9d1d9", fontSize: 11, textAlign: "right", maxWidth: "60%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 6 }}>
-                  {slot.ilvl && <><IlvlBadge ilvl={slot.ilvl} />{" "}</>}{slot.name}
-                </span>
-              : <span style={{ color: T.textDim, fontSize: 11 }}>—</span>}
+          <div key={i} style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 12px", borderRadius: 8,
+            background: slot.name ? "rgba(255,255,255,0.03)" : "transparent",
+            borderBottom: i < gear.length - 1 ? `1px solid ${T.border}22` : "none",
+          }}>
+            <span style={{
+              color: T.textDim, fontSize: 10, fontFamily: "'Cinzel', serif",
+              letterSpacing: 0.5, width: 68, flexShrink: 0, textTransform: "uppercase",
+            }}>{slot.label}</span>
+            {slot.name ? (
+              <>
+                <span style={{
+                  color: T.text, fontSize: 13, flex: 1,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>{slot.name}</span>
+                {slot.ilvl && <IlvlBadge ilvl={slot.ilvl} />}
+              </>
+            ) : (
+              <span style={{ color: T.textDim, fontSize: 12, fontStyle: "italic" }}>empty</span>
+            )}
           </div>
         ))}
       </div>
