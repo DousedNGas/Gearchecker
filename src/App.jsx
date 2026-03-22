@@ -159,7 +159,21 @@ DAWNCRESTS: 20 per upgrade rank | 100/week cap per type | FREE if slot is below 
 SPARKS OF RADIANCE: 1/week (2 week 1) | 2 Sparks most items, 4 Sparks 2H/ranged | Base 259 | +80 Hero crests → 272 | +80 Myth crests → 285 | Thalassian Missive = choose your stats
 NEVER CRAFT: Head, Shoulders, Chest, Hands, Legs (Tier slots — can't Catalyst convert)
 BEST CRAFT TARGETS: Weapon > Neck > Cloak > Bracers > Belt > Boots > Rings
-EMBELLISHMENTS: Max 2 equipped. Plan as a pair. Synergy > individual power.
+EMBELLISHMENTS: Max 2 equipped simultaneously. Cannot add to pre-embellished gear. Crafted via Mar'nah in Silvermoon.
+OPTIONAL REAGENT EMBELLISHMENTS (add to any non-pre-embellished crafted piece):
+- Darkmoon Sigil: Void — Chance to grant Versatility for 15s. Multiple stacks overlap.
+- Darkmoon Sigil: Hunt — Chance to grant 85 secondary stats for 15s based on creature type. WEAPON-ONLY slot.
+- Darkmoon Sigil: Rot — Afflict target with Rooting Roots: 18 Nature dmg every 2s, stacks to 5 (15s per stack). Nature-damage specs only.
+- Darkmoon Sigil: Blood — Procs lowest secondary stat +116 for 15s. Procs highest secondary stat when an ally dies (5 min CD). Generally weakest option.
+- Devouring Banding — Chance to launch Devouring Bolts at target and boost your highest secondary stat.
+- Primal Spore Binding — Chance to launch Explosive Spores: heals allies or damages enemies based on target.
+- Arcanoweave Lining — Armor-slot reagent. Provides Mastery proc. Belt/Bracers/Boots/Cloak only.
+PRE-EMBELLISHED SETS (2-piece bonuses, no additional embellishment slot):
+- Sunfire set (Cloth) — Gain 157 Haste while above 80% health.
+- Arcanoweave set (Cloth) — Gain 157 Critical Strike while above 80% health.
+- Signet of Azerothian Blessings (Ring) — Chance to grant 23 to all secondary stats for 15s.
+- Loa Worshiper's Band (Ring) — Chance to call a Loa avatar to assist in combat.
+EMBELLISHMENT RULES: Each Embellishment provides roughly 0.5–1% DPS/throughput. Plan both slots before first craft. Weapon embellishments (Sigil: Hunt) get replaced when you upgrade to Myth-track weapons.
 VAULT: Resets Tuesday | 1/4/8 M+ keys = 1/2/3 dungeon slots | +10 key = 272 vault reward
 4-SET TIER: Almost always beats 2-set + 2x higher ilvl non-tier pieces`;
 
