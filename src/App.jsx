@@ -484,19 +484,53 @@ async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES, timeout 
   }
 }
 
+// system can be a string OR an array of {type,text,cache_control?} blocks
 async function callClaude(systemPrompt, messages, maxTokens = 1500) {
   const res = await fetchWithRetry("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       max_tokens: maxTokens,
-      system: systemPrompt,
+      system: systemPrompt,  // proxy handles string or array
       messages,
     }),
   });
   if (!res.ok) throw new Error(res.status === 429 ? "Daily limit reached (5 analyses/day). Come back tomorrow!" : `API error ${res.status}`);
   const data = await res.json();
   return data.content?.map(b => b.text || "").join("") || "No response.";
+}
+
+// ── Chat history truncation: keeps first exchange for context + last 4 exchanges
+function truncateHistory(hist, keepPairs = 4) {
+  if (hist.length <= keepPairs * 2 + 2) return hist;
+  const first = hist.slice(0, 2);  // original analysis Q+A for context
+  const recent = hist.slice(-(keepPairs * 2));
+  const skipped = Math.floor((hist.length - 2 - keepPairs * 2) / 2);
+  const summary = {
+    role: "user",
+    content: `[${skipped} earlier exchange${skipped > 1 ? "s" : ""} omitted for brevity]`,
+    display: "[Earlier messages truncated]",
+  };
+  return [...first, summary, ...recent];
+}
+
+// ── Gear summary: top 5 weakest slots by ilvl for follow-up prompts
+function summarizeGearForPrompt(gearSummaryFull, simcParsed, inputMode) {
+  let slots = [];
+  if (inputMode === "rio" && gearSummaryFull) {
+    const lines = gearSummaryFull.split("\n").slice(2); // skip header lines
+    slots = lines.map(l => {
+      const m = l.match(/^(.+?):\s*(.+?)(?:\s+\((ilvl )?(\d+)\))?$/);
+      return m ? { label: m[1], name: m[2], ilvl: m[4] ? parseInt(m[4]) : 999 } : null;
+    }).filter(Boolean);
+  } else if (inputMode === "simc" && simcParsed) {
+    slots = simcParsed.gear.filter(g => g.name && g.ilvl).map(g => ({ label: g.label, name: g.name, ilvl: g.ilvl }));
+  }
+  if (!slots.length) return "No gear data — give best general spec advice.";
+  const sorted = [...slots].sort((a, b) => a.ilvl - b.ilvl);
+  const weakest = sorted.slice(0, 5);
+  const avg = Math.round(slots.reduce((s, g) => s + (g.ilvl || 0), 0) / slots.length);
+  return `Avg ilvl: ${avg}. 5 weakest slots:\n` + weakest.map(g => `${g.label}: ${g.name} (ilvl ${g.ilvl})`).join("\n");
 }
 
 
@@ -1084,16 +1118,30 @@ export default function Vaultwright() {
     return "No gear data — give best general spec advice.";
   };
 
-  const sysPrompt = () => `You are Vaultwright — a sharp WoW gear advisor for Midnight Season 1. Give direct, specific, actionable advice. Explain the mechanical WHY behind every recommendation. Reference the player's actual gear items and ilvls when available.
+  // sysPrompt returns an array of content blocks.
+  // Static knowledge blocks are marked cache_control so Anthropic re-uses cached tokens.
+  const sysPrompt = (compactGear = false) => {
+    const gear = compactGear
+      ? summarizeGearForPrompt(gearSummary, simcParsed, inputMode)
+      : buildGearContext();
+    return [
+      // Block 1: static knowledge — cached across all calls for this spec session
+      {
+        type: "text",
+        text: `${UNIVERSAL_KNOWLEDGE}\n${getSpecKnowledge(activeSpec, activeClass)}`,
+        cache_control: { type: "ephemeral" },
+      },
+      // Block 2: dynamic context — player-specific, changes per session
+      {
+        type: "text",
+        text: `You are Vaultwright — a sharp WoW gear advisor for Midnight Season 1. Give direct, specific, actionable advice. Explain the mechanical WHY behind every recommendation. Reference the player's actual gear items and ilvls when available.
 
 Player: ${activeSpec || "Unknown Spec"} ${activeClass || "Unknown Class"}
 Content: ${content.join(", ") || "general play"}
 Goal: ${priority}
 
 Gear:
-${buildGearContext()}
-${UNIVERSAL_KNOWLEDGE}
-${getSpecKnowledge(activeSpec, activeClass)}
+${gear}
 
 Rules:
 - Use ## for section headers, **bold** for key stats/items/numbers, bullet points (- ) for lists.
@@ -1102,7 +1150,10 @@ Rules:
 - Lead with the single most important recommendation, stated simply.
 - Name actual items from the player's gear, give exact ilvl numbers and Dawncrest costs.
 - Keep each section tight — 3-5 bullet points max. No walls of text.
-- Be direct. If something is wrong with their gear, say it plainly.`;
+- Be direct. If something is wrong with their gear, say it plainly.`,
+      },
+    ];
+  };
 
 
   const sendInitial = async () => {
@@ -1123,8 +1174,10 @@ Rules:
     const text = followUp.trim(); setFollowUp(""); setLoading(true);
     const hist = [...chatHistory, { role: "user", content: text }];
     setChatHistory(hist);
+    // Use truncated history + compact gear summary to cut token usage on follow-ups
+    const truncated = truncateHistory(hist);
     try {
-      const reply = await callClaude(sysPrompt(), hist.map(m => ({ role: m.role, content: m.content })));
+      const reply = await callClaude(sysPrompt(true), truncated.map(m => ({ role: m.role, content: m.content })));
       setChatHistory([...hist, { role: "assistant", content: reply }]);
     } catch (e) { setChatHistory([...hist, { role: "assistant", content: `Error: ${e.message}` }]); }
     setLoading(false);
