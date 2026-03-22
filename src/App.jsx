@@ -1434,7 +1434,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
                 </div>
               )}
 
-              {/* Weekly tab */
+              {/* Weekly tab */}
               {oracleMode === "weekly" && (
                 <div style={S.card}>
                   {!chatHistory.some(m => m.display === "Weekly Plan") && <WeeklyEmptyState />}
