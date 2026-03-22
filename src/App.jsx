@@ -738,7 +738,7 @@ function ResponseBlock({ content, showCopy = false }) {
                       {bodyRows.map((row,ri) => {
                         const cells = row.split("|").filter((_,j,a)=>j>0&&j<a.length-1).map(c=>c.trim());
                         return <tr key={ri} style={{ borderBottom:`1px solid ${T.border}20`, background: ri%2===0?"transparent":T.surfaceHi+"40" }}>
-                          {cells.map((c,ci) => <td key={ci} style={{ padding:"8px 12px", color:"#c9d1d9", fontSize:13, verticalAlign:"top" }} dangerouslySetInnerHTML={{ __html: c.replace(/\*\*(.+?)\*\*/g,`<strong style="color:${T.text}">$1</strong>`) }} />)}
+                          {cells.map((c,ci) => <td key={ci} style={{ padding:"8px 12px", color:"#c9d1d9", fontSize:13, verticalAlign:"top" }} dangerouslySetInnerHTML={{ __html: c.replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\*\*(.+?)\*\*/g,`<strong style="color:${T.text}">$1</strong>`) }} />)}
                         </tr>;
                       })}
                     </tbody>
@@ -751,7 +751,9 @@ function ResponseBlock({ content, showCopy = false }) {
           if (line.startsWith("##")) {
             out.push(<h3 key={i} style={{ color: T.gold, fontSize: 14, fontFamily: "'Cinzel', serif", fontWeight: 700, marginTop: 18, marginBottom: 6, letterSpacing: 0.5 }}>{line.replace(/^#+\s*/, "")}</h3>);
           } else if (line.startsWith("- ") || line.startsWith("• ")) {
-            const html = line.replace(/^[-•]\s*/, "").replace(/\*\*(.+?)\*\*/g, `<strong style="color:${T.text}">$1</strong>`);
+            const raw = line.replace(/^[-•]\s*/, "");
+          const safe = raw.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+          const html = safe.replace(/\*\*(.+?)\*\*/g, `<strong style="color:${T.text}">$1</strong>`);
             out.push(
               <div key={i} style={{ display:"flex", gap:10, margin:"5px 0", paddingLeft:4 }}>
                 <span style={{ color:T.gold, flexShrink:0, marginTop:6, fontSize:6 }}>◆</span>
@@ -968,7 +970,7 @@ export default function Vaultwright() {
   }, []);
 
   const [oracleMode,      setOracleMode]      = useState("analysis");
-  const [vaultItems,      setVaultItems]      = useState(["","","","","","","","",""]);
+  const [vaultItems,      setVaultItems]      = useState(["","","",  "","","",  "","",""]);  // 9 slots: 3 dungeon, 3 raid, 3 world
   const [sparksAvailable, setSparksAvailable] = useState("1");
   const [heroCrestsAvail, setHeroCrestsAvail] = useState("");
   const [mythCrestsAvail, setMythCrestsAvail] = useState("");
@@ -1001,14 +1003,37 @@ export default function Vaultwright() {
       const rawKey = t.slice(0, eqIdx).trim();
       const val = t.slice(eqIdx + 1).trim().replace(/"/g, "");
       if (!parsedClass && classNameMap[rawKey.toLowerCase()]) { parsedClass = classNameMap[rawKey.toLowerCase()]; continue; }
-      if (rawKey === "spec") { const sv = val.replace(/_/g, " "); parsedSpec = sv.charAt(0).toUpperCase() + sv.slice(1); continue; }
+      if (rawKey === "spec") {
+        const specMap = {
+          beast_mastery:"Beast Mastery", beastmastery:"Beast Mastery",
+          holy:"Holy", protection:"Protection", retribution:"Retribution",
+          blood:"Blood", frost:"Frost", unholy:"Unholy",
+          havoc:"Havoc", vengeance:"Vengeance", devourer:"Devourer",
+          balance:"Balance", feral:"Feral", guardian:"Guardian", restoration:"Restoration",
+          devastation:"Devastation", preservation:"Preservation", augmentation:"Augmentation",
+          marksmanship:"Marksmanship", survival:"Survival",
+          arcane:"Arcane", fire:"Fire",
+          brewmaster:"Brewmaster", mistweaver:"Mistweaver", windwalker:"Windwalker",
+          discipline:"Discipline", shadow:"Shadow",
+          assassination:"Assassination", outlaw:"Outlaw", subtlety:"Subtlety",
+          elemental:"Elemental", enhancement:"Enhancement",
+          affliction:"Affliction", demonology:"Demonology", destruction:"Destruction",
+          arms:"Arms", fury:"Fury",
+        };
+        const key = val.toLowerCase().replace(/[^a-z_]/g, "");
+        parsedSpec = specMap[key] || (val.replace(/_/g," ").replace(/\w/g,c=>c.toUpperCase()));
+        continue;
+      }
       const slotKey = slotMap[rawKey];
       if (slotKey) {
         const itemName = val.split(",")[0].replace(/_/g, " ").trim();
         const ilvlM = val.match(/ilevel=(\d+)/);
         const ilvl = ilvlM ? parseInt(ilvlM[1]) : null;
         if (ilvl) ilvls.push(ilvl);
-        found[slotKey] = { key: slotKey, name: itemName || "", ilvl };
+        const hasEnchant = val.includes("enchant=");
+        const hasGem = val.includes("gem_id=") || val.includes(",gem");
+        const bonusIds = (val.match(/bonus_id=([\d/:]+)/) || [])[1] || "";
+        found[slotKey] = { key: slotKey, name: itemName || "", ilvl, hasEnchant, hasGem, bonusIds };
       }
     }
     const gear = GEAR_SLOTS.map(s => { const h = found[s.key]; return h ? { ...s, name: h.name, ilvl: h.ilvl } : { ...s, name: "", ilvl: null }; });
@@ -1033,7 +1058,13 @@ export default function Vaultwright() {
     setRioLoading(true); setRioError(""); setDetectedGear([]);
     try {
       const res = await fetchWithRetry(`/api/raiderio?region=${rioRegion}&realm=${encodeURIComponent(toRealmSlug(rioRealm))}&name=${encodeURIComponent(rioName.trim())}`);
-      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || `Character not found (${res.status})`); }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        if (res.status === 404) throw new Error(`Character "${rioName}" not found on ${rioRealm} (${rioRegion.toUpperCase()}). Check the name and realm spelling.`);
+        if (res.status === 429) throw new Error("Raider.IO rate limit hit — wait 10 seconds and try again.");
+        if (res.status >= 500) throw new Error("Raider.IO is having issues right now. Try again in a moment.");
+        throw new Error(e.message || `Lookup failed (${res.status}). Check name, realm and region.`);
+      }
       const data = await res.json();
       if (data.class)            setDetectedClass(data.class);
       if (data.active_spec_name) setDetectedSpec(data.active_spec_name);
@@ -1219,7 +1250,7 @@ Rules:
                             } else setShowRealmDrop(false);
                           }}
                           onKeyDown={e => { if (e.key === "Enter") { setShowRealmDrop(false); fetchRaiderIO(); } if (e.key === "Escape") setShowRealmDrop(false); }}
-                          onBlur={() => setTimeout(() => setShowRealmDrop(false), 150)} />
+                          onBlur={() => setTimeout(() => setShowRealmDrop(false), 200)} />
                         {/* Fallback native select for mobile */}
                         <select
                           style={{ ...S.input, color: rioRealm ? T.text : T.textDim, cursor: "pointer", fontSize: 14 }}
@@ -1496,11 +1527,11 @@ Rules:
                     </div>
                     <div>
                       <span style={S.label}>Hero Crests</span>
-                      <input style={{ ...S.input, fontSize: 15 }} type="number" min="0" max="100" placeholder="0–100" value={heroCrestsAvail} onChange={e => setHeroCrestsAvail(e.target.value)} />
+                      <input style={{ ...S.input, fontSize: 15 }} type="number" min="0" max="100" placeholder="0–100" value={heroCrestsAvail} onChange={e => { const v = e.target.value; if (v === "" || (/^\d+$/.test(v) && parseInt(v) <= 100)) setHeroCrestsAvail(v); }} />
                     </div>
                     <div>
                       <span style={S.label}>Myth Crests</span>
-                      <input style={{ ...S.input, fontSize: 15 }} type="number" min="0" max="100" placeholder="0–100" value={mythCrestsAvail} onChange={e => setMythCrestsAvail(e.target.value)} />
+                      <input style={{ ...S.input, fontSize: 15 }} type="number" min="0" max="100" placeholder="0–100" value={mythCrestsAvail} onChange={e => { const v = e.target.value; if (v === "" || (/^\d+$/.test(v) && parseInt(v) <= 100)) setMythCrestsAvail(v); }} />
                     </div>
                   </div>
                   <button style={{ ...S.primaryBtn, width: "100%", opacity: loading ? 0.45 : 1 }} onClick={sendWeeklyPlan} disabled={loading}>
