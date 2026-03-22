@@ -183,7 +183,7 @@ const SPEC_KNOWLEDGE = {
 APEX TALENT — Dance of Midnight: While Dancing Rune Weapon is active, parrying has a chance to make your next Heart Strike cost no Runes and deal 150% increased damage. Each DRW active increases your damage by 6% and reduces damage taken by 6%. Consuming a Rune has a chance to summon a DRW for 6 seconds. Rotation anchors around maintaining DRW uptime and spamming Heart Strike during parry windows.
 STAT PRIORITY: Strength > Versatility (scales damage reduction from DRW stacking) > Haste (more Rune consumption = more DRW procs) > Mastery (Blood Shield) > Crit
 BEST CRAFT: 2H Weapon first (largest single throughput gain). Never craft Chest (Tier slot).
-KEY TIPS: Parry chance is critical — prioritize Parry secondary on gear if available. More DRWs active = multiplicative damage reduction. Use Keg-... wait, use Death Strike when below 40% health for emergency mitigation.`,
+KEY TIPS: Parry chance is critical — prioritize Parry secondary on gear if available. More DRWs active = multiplicative damage reduction. Use Death Strike when below 40% health for emergency mitigation.`,
 
   "Frost DK":`SPEC: Frost Death Knight (DPS)
 APEX TALENT — Chosen of Frostbrood: Frostwyrm's Fury deals 100% increased damage to the first enemy hit and grants 15% Haste for 12 seconds. It extends an active Pillar of Frost by 2 seconds. All Frost damage increased by 10%. After the Frostwyrm leaves you can recall it for a second cast at 50% effectiveness. Rotation revolves around maximising Frostwyrm's Fury hits and Pillar of Frost extensions.
@@ -460,7 +460,7 @@ function getSpecKnowledge(activeSpec, activeClass) {
 const DEFAULT_TIMEOUT = 15000; // 15s
 const MAX_RETRIES = 2;
 
-export async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES, timeout = DEFAULT_TIMEOUT) {
+async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES, timeout = DEFAULT_TIMEOUT) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
@@ -482,12 +482,11 @@ export async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES, t
   }
 }
 
-export async function callClaude(systemPrompt, messages, maxTokens = 1500) {
+async function callClaude(systemPrompt, messages, maxTokens = 1500) {
   const res = await fetchWithRetry("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
       max_tokens: maxTokens,
       system: systemPrompt,
       messages,
@@ -746,6 +745,9 @@ function GearPreviewGrid({ gear }) {
 }
 
 
+// ── Pure helpers (module-level) ─────────────────────────────────
+const toRealmSlug = n => n.trim().toLowerCase().replace(/\s+/g, "-").replace(/'/g, "").replace(/[^a-z0-9-]/g, "");
+
 // ── Main App ─────────────────────────────────────────────────────
 // ── Mode card (no emoji) ─────────────────────────────────────────
 function ModeCard({ icon: Icon, title, badge, badgeColor = T.gold, description, selected, onClick }) {
@@ -776,7 +778,7 @@ function ModeCard({ icon: Icon, title, badge, badgeColor = T.gold, description, 
 }
 
 // ── Oracle tab button (no emoji) ─────────────────────────────────
-function OracleTab({ id, label, icon: Icon, active, onClick }) {
+function OracleTab({ label, icon: Icon, active, onClick }) {
   return (
     <button onClick={onClick} style={{
       flex: 1, padding: "10px 6px", borderRadius: 10, cursor: "pointer",
@@ -839,6 +841,9 @@ function WeeklyEmptyState() {
   );
 }
 
+// ── Pure helpers (module-level) ─────────────────────────────────
+const toRealmSlug = n => n.trim().toLowerCase().replace(/\s+/g, "-").replace(/'/g, "").replace(/[^a-z0-9-]/g, "");
+
 // ── Main App ─────────────────────────────────────────────────────
 export default function Apex() {
   const [step, setStep]         = useState(0);
@@ -886,7 +891,6 @@ export default function Apex() {
   const activeSpec  = detectedSpec;
   const classData   = CLASSES.find(c => c.name === activeClass);
 
-  const toRealmSlug = n => n.trim().toLowerCase().replace(/\s+/g, "-").replace(/'/g, "").replace(/[^a-z0-9-]/g, "");
 
   // SimC parser
   const parseSimC = useCallback((str) => {
@@ -966,7 +970,6 @@ ${getSpecKnowledge(activeSpec, activeClass)}
 
 Rules: Use ## for section headers, **bold** for stats/items. Lead with the single most important recommendation. Name actual items, ilvl thresholds, Dawncrest costs. Call out mistakes directly.`;
 
-  const appendMessage = (msg) => setChatHistory(h => [...h, msg]);
 
   const sendInitial = async () => {
     setLoading(true); setStep(3); setOracleMode("analysis");
