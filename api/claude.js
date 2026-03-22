@@ -33,12 +33,10 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    if (response.status === 429) {
-      return res.status(429).json({ error: "Rate limit hit — wait a moment and try again." });
-    }
-
     if (!response.ok) {
-      return res.status(response.status).json({ error: data.error?.message || "Gemini error" });
+      const msg = data.error?.message || data.error?.status || JSON.stringify(data.error) || "Gemini error";
+      console.error("Gemini error:", response.status, msg);
+      return res.status(response.status).json({ error: msg });
     }
 
     // Translate Gemini response → Anthropic response shape so App.jsx works unchanged
