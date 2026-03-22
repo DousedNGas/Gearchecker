@@ -677,9 +677,36 @@ function IlvlBadge({ ilvl }) {
 }
 
 // ── Response markdown renderer
-function ResponseBlock({ content }) {
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <button onClick={handleCopy} style={{
+      background: copied ? `${T.green}20` : "rgba(255,255,255,0.04)",
+      border: `1px solid ${copied ? T.green : T.border}`,
+      borderRadius: 8, padding: "5px 10px", cursor: "pointer",
+      color: copied ? T.green : T.textSub, fontSize: 11, fontFamily: "'Cinzel', serif",
+      letterSpacing: 1, transition: "all 0.2s", WebkitTapHighlightColor: "transparent",
+    }}>
+      {copied ? "✓ COPIED" : "COPY"}
+    </button>
+  );
+}
+
+function ResponseBlock({ content, showCopy = false }) {
   if (!content) return null;
   return (
+    <div>
+      {showCopy && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+          <CopyButton text={content} />
+        </div>
+      )}
     <div style={{ lineHeight: 1.8 }}>
       {content.split("\n").filter(l => l.trim()).map((line, i) => {
         if (line.startsWith("##")) return (
@@ -699,6 +726,7 @@ function ResponseBlock({ content }) {
         const html = line.replace(/\*\*(.+?)\*\*/g, `<strong style="color:${T.text}">$1</strong>`);
         return <p key={i} style={{ color: "#c9d1d9", fontSize: 14, margin: "6px 0", lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: html }} />;
       })}
+    </div>
     </div>
   );
 }
@@ -796,7 +824,7 @@ function ModeCard({ icon: Icon, title, badge, badgeColor = T.gold, description, 
 // ── Oracle tab button (no emoji) ─────────────────────────────────
 function OracleTab({ label, icon: Icon, active, onClick }) {
   return (
-    <button onClick={onClick} style={{
+    <button role="tab" aria-selected={active} aria-label={label} onClick={onClick} style={{
       flex: 1, padding: "10px 6px", borderRadius: 10, cursor: "pointer",
       background: active ? `${T.gold}18` : T.surface,
       border: `1.5px solid ${active ? T.gold : T.border}`,
@@ -883,6 +911,19 @@ export default function Vaultwright() {
   const [loading,     setLoading]     = useState(false);
   const [followUp,    setFollowUp]    = useState("");
   const chatEndRef = useRef(null);
+  const followUpRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        followUpRef.current?.focus();
+        followUpRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const [oracleMode,      setOracleMode]      = useState("analysis");
   const [vaultItems,      setVaultItems]      = useState(["","","","","","","","",""]);
@@ -1052,6 +1093,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
         @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
         @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes runespin { 0%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} 100%{opacity:0.3;transform:scale(0.8)} }
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #1e2d42; border-radius: 4px; }
@@ -1115,24 +1157,38 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
                     </div>
                     <div style={{ position: "relative" }}>
                       <span style={S.label}>Realm</span>
-                      <input style={S.input} placeholder="Start typing..." value={rioRealm} autoComplete="off"
-                        onChange={e => {
-                          const v = e.target.value; setRioRealm(v);
-                          if (v.length >= 2) {
-                            const q = v.toLowerCase();
-                            const pool = WOW_REALMS[rioRegion] || WOW_REALMS.us;
-                            setRealmSuggestions(pool.filter(r => r.toLowerCase().includes(q)).slice(0, 7));
-                            setShowRealmDrop(true);
-                          } else setShowRealmDrop(false);
-                        }}
-                        onKeyDown={e => { if (e.key === "Enter") { setShowRealmDrop(false); fetchRaiderIO(); } if (e.key === "Escape") setShowRealmDrop(false); }}
-                        onBlur={() => setTimeout(() => setShowRealmDrop(false), 150)} />
+                      {/* Mobile: native searchable select; Desktop: autocomplete input */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <input style={S.input} placeholder="Type to search realms..." value={rioRealm} autoComplete="off"
+                          onChange={e => {
+                            const v = e.target.value; setRioRealm(v);
+                            if (v.length >= 2) {
+                              const q = v.toLowerCase();
+                              const pool = WOW_REALMS[rioRegion] || WOW_REALMS.us;
+                              setRealmSuggestions(pool.filter(r => r.toLowerCase().includes(q)).slice(0, 8));
+                              setShowRealmDrop(true);
+                            } else setShowRealmDrop(false);
+                          }}
+                          onKeyDown={e => { if (e.key === "Enter") { setShowRealmDrop(false); fetchRaiderIO(); } if (e.key === "Escape") setShowRealmDrop(false); }}
+                          onBlur={() => setTimeout(() => setShowRealmDrop(false), 150)} />
+                        {/* Fallback native select for mobile */}
+                        <select
+                          style={{ ...S.input, color: rioRealm ? T.text : T.textDim, cursor: "pointer", fontSize: 14 }}
+                          value={rioRealm}
+                          onChange={e => { setRioRealm(e.target.value); setShowRealmDrop(false); }}
+                        >
+                          <option value="">— Or pick from list —</option>
+                          {(WOW_REALMS[rioRegion] || WOW_REALMS.us).map(r => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
+                      </div>
                       {showRealmDrop && realmSuggestions.length > 0 && (
-                        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: "#161b22", border: `1px solid ${T.borderHi}`, borderRadius: 8, overflow: "hidden", marginTop: 4, boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}>
+                        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: T.surface, border: `1px solid ${T.borderHi}`, borderRadius: 10, overflow: "hidden", marginTop: 4, boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }}>
                           {realmSuggestions.map(r => (
                             <div key={r} onMouseDown={() => { setRioRealm(r); setShowRealmDrop(false); }}
-                              style={{ padding: "12px 14px", cursor: "pointer", fontSize: 15, color: T.text, borderBottom: `1px solid ${T.border}` }}
-                              onMouseEnter={e => e.currentTarget.style.background = "#21262d"}
+                              style={{ padding: "12px 16px", cursor: "pointer", fontSize: 15, color: T.text, borderBottom: `1px solid ${T.border}20` }}
+                              onMouseEnter={e => e.currentTarget.style.background = T.surfaceHi}
                               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                               {r}
                             </div>
@@ -1272,7 +1328,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
               </div>
 
               {/* Tabs */}
-              <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              <div role="tablist" aria-label="Oracle modes" style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                 <OracleTab label="Analysis" icon={Sword}    active={oracleMode==="analysis"} onClick={() => setOracleMode("analysis")} />
                 <OracleTab label="Vault"    icon={Trophy}   active={oracleMode==="vault"}    onClick={() => setOracleMode("vault")} />
                 <OracleTab label="Weekly"   icon={Calendar} active={oracleMode==="weekly"}   onClick={() => setOracleMode("weekly")} />
@@ -1286,7 +1342,10 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
                   )}
                   {loading && chatHistory.length <= 1 && (
                     <div style={{ padding: "8px 0" }}>
-                      <p style={{ color: T.textDim, fontSize: 12, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, margin: "0 0 16px", fontWeight: 700 }}>VAULTWRIGHT</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                        <span style={{ fontSize: 16, animation: "runespin 2s linear infinite", display: "inline-block" }}>᛫</span>
+                        <p style={{ color: T.gold, fontSize: 12, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, margin: 0, fontWeight: 700 }}>VAULTWRIGHT IS THINKING…</p>
+                      </div>
                       <SkeletonBlock lines={8} />
                     </div>
                   )}
@@ -1309,7 +1368,10 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
                       ))}
                       {loading && (
                         <div style={S.chatMsg("assistant")}>
-                          <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, marginBottom: 12, color: T.textDim, fontWeight: 700 }}>VAULTWRIGHT</p>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <span style={{ fontSize: 14, animation: "runespin 2s linear infinite", display: "inline-block", color: T.gold }}>᛫</span>
+                            <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, margin: 0, color: T.gold, fontWeight: 700 }}>VAULTWRIGHT IS THINKING…</p>
+                          </div>
                           <SkeletonBlock lines={5} />
                         </div>
                       )}
@@ -1319,7 +1381,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
                   {chatHistory.length > 0 && !loading && (
                     <div style={{ marginTop: 14, borderTop: `1px solid ${T.border}`, paddingTop: 14 }}>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <input style={{ ...S.input, flex: 1 }} placeholder="Ask a follow-up..."
+                        <input ref={followUpRef} style={{ ...S.input, flex: 1 }} placeholder="Ask a follow-up…  ⌘K"
                           value={followUp} onChange={e => setFollowUp(e.target.value)}
                           onKeyDown={e => e.key === "Enter" && sendFollowUp()} />
                         <button style={{ ...S.primaryBtn, padding: "12px 18px", flexShrink: 0, opacity: followUp.trim() ? 1 : 0.45 }} onClick={sendFollowUp} disabled={!followUp.trim()}>Ask</button>
@@ -1365,14 +1427,14 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
                     return (
                       <div key={i} style={{ ...S.chatMsg("assistant"), marginTop: 14 }}>
                         <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, marginBottom: 8, color: T.textDim, fontWeight: 700 }}>VAULTWRIGHT</p>
-                        <ResponseBlock content={resp.content} />
+                        <ResponseBlock content={resp.content} showCopy={true} />
                       </div>
                     );
                   })}
                 </div>
               )}
 
-              {/* Weekly tab */}
+              {/* Weekly tab */
               {oracleMode === "weekly" && (
                 <div style={S.card}>
                   {!chatHistory.some(m => m.display === "Weekly Plan") && <WeeklyEmptyState />}
@@ -1405,7 +1467,7 @@ Rules: Use ## for section headers, **bold** for stats/items. Lead with the singl
                     return (
                       <div key={i} style={{ ...S.chatMsg("assistant"), marginTop: 14 }}>
                         <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, marginBottom: 8, color: T.textDim, fontWeight: 700 }}>VAULTWRIGHT — WEEK PLAN</p>
-                        <ResponseBlock content={resp.content} />
+                        <ResponseBlock content={resp.content} showCopy={true} />
                       </div>
                     );
                   })}
