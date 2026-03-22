@@ -840,10 +840,6 @@ function WeeklyEmptyState() {
     </div>
   );
 }
-
-// ── Pure helpers (module-level) ─────────────────────────────────
-const toRealmSlug = n => n.trim().toLowerCase().replace(/\s+/g, "-").replace(/'/g, "").replace(/[^a-z0-9-]/g, "");
-
 // ── Main App ─────────────────────────────────────────────────────
 export default function Apex() {
   const [step, setStep]         = useState(0);
