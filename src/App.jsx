@@ -159,9 +159,9 @@ After searching, clearly state if advice differs from the player's spec knowledg
 
 const UNIVERSAL_KNOWLEDGE = `
 == MIDNIGHT SEASON 1 — UNIVERSAL RULES ==
-GEAR TRACKS: Unranked 207-217 | Adventurer 220-230 | Veteran 233-243 | Champion 246-256 | Hero 259-269 | Myth 272-289 (max)
+GEAR TRACKS: Adventurer 220-237 | Veteran 233-250 | Champion 246-263 | Hero 259-272 | Myth 272-289 (max ilvl 289)
 DAWNCRESTS: 20 per upgrade rank | 100/week cap per type | FREE if slot is below its personal highest-ever ilvl | Spend order: Myth > Hero > Champion > Veteran > Adventurer
-SPARKS OF RADIANCE: 1/week (2 week 1) | 2 Sparks most items, 4 Sparks 2H/ranged | Base 259 | +80 Hero crests → 272 | +80 Myth crests → 285 | Thalassian Missive = choose your stats
+SPARKS OF RADIANCE: 1/week (2 week 1) | 2 Sparks most items, 4 Sparks 2H/ranged | Base crafted ilvl 259 (Hero 1/6) | +Hero crests → 272 | +Myth crests → 285-289 | Thalassian Missive = choose your stats
 NEVER CRAFT: Head, Shoulders, Chest, Hands, Legs (Tier slots — can't Catalyst convert)
 BEST CRAFT TARGETS: Weapon > Neck > Cloak > Bracers > Belt > Boots > Rings
 EMBELLISHMENTS: Max 2 equipped simultaneously. Cannot add to pre-embellished gear. Crafted via Mar'nah in Silvermoon.
@@ -1258,6 +1258,23 @@ Where am I actually equal to or ahead of my friend?`;
           </div>
 
           {false && <Breadcrumb steps={STEPS} current={step} />} {/* hidden — 2-step flow */}
+
+          {/* ── DEV ONLY: skip input ── */}
+          {import.meta.env.DEV && (
+            <div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}>
+              <button style={{ background: "#2d1a4a", border: "1px solid #8b6fff40", borderRadius: 8, padding: "7px 16px", cursor: "pointer", color: "#8b6fff", fontSize: 12, fontFamily: "'Cinzel', serif", letterSpacing: 1 }}
+                onClick={() => {
+                  setInputMode("simc");
+                  setContentFocus("M+");
+                  setDetectedClass("Death Knight");
+                  setDetectedSpec("Frost DK");
+                  setGearSummary("Character: Testchar (Death Knight — Frost DK), avg ilvl 262.\nEquipped gear:\nHead: Helm of the Voidspire (ilvl 259)\nNeck: Amulet of Fractured Fate (ilvl 266)\nShoulder: Shoulderguards of the Fallen Crusade (ilvl 259)\nBack: Cloak of Enveloping Darkness (ilvl 259)\nChest: Breastplate of the Midnight Vanguard (ilvl 266)\nWrist: Voidforged Bracers (ilvl 259)\nHands: Gauntlets of the Ebon Blade (ilvl 259)\nWaist: Belt of Fractured Souls (ilvl 259)\nLegs: Legguards of the Voidspire (ilvl 259)\nFeet: Boots of the Fallen Crusade (ilvl 259)\nFinger 1: Ring of Cosmic Convergence (ilvl 266)\nFinger 2: Band of the Void Sentinel (ilvl 259)\nTrinket 1: Treacherous Transmitter (ilvl 266)\nTrinket 2: Sigil of Algari Concordance (ilvl 259)\nMainhand: Frostbrood Sapper (ilvl 272)");
+                  sendInitial();
+                }}>
+                ⚡ DEV: Skip to Analysis
+              </button>
+            </div>
+          )}
 
           {/* ══ Step 0: Input + content focus ══ */}
           {step === 0 && (
