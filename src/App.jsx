@@ -747,10 +747,10 @@ function AnalysisEmptyState({ specName, className, onRun, loading }) {
         {specName && className ? `${specName} ${className}` : "Ready to analyse"}
       </p>
       <p style={{ color: T.textSub, fontSize: 13, margin: "0 0 24px", lineHeight: 1.5 }}>
-        Vaultwright will break down your stat priorities, weakest slots, crafting plan, and immediate wins.
+        Tell Vaultwright what you mainly play — they'll diagnose what's actually holding you back.
       </p>
       <button style={{ ...S.primaryBtn, width: "100%", opacity: loading ? 0.5 : 1 }} onClick={onRun} disabled={loading}>
-        {loading ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />Analysing...</span> : "Run Analysis"}
+        {loading ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />Analysing...</span> : "Find My Problem"}
       </button>
     </div>
   );
@@ -791,17 +791,31 @@ export default function Vaultwright() {
   const [detectedGear, setDetectedGear] = useState([]);
   const [gearSummary,  setGearSummary]  = useState("");
 
-  const [rioName,    setRioName]    = useState("");
-  const [rioRealm,   setRioRealm]   = useState("");
-  const [rioRegion,  setRioRegion]  = useState("us");
+  // Raider.IO — URL-based input (replaces 3-field name/realm/region)
+  const [rioUrl,     setRioUrl]     = useState("");
   const [rioLoading, setRioLoading] = useState(false);
   const [rioError,   setRioError]   = useState("");
+
+  // Warcraft Logs
+  const [wclUrl,     setWclUrl]     = useState("");
+  const [wclData,    setWclData]    = useState(null);
+  const [wclLoading, setWclLoading] = useState(false);
+  const [wclError,   setWclError]   = useState("");
 
   const [simcString, setSimcString] = useState("");
   const [simcParsed, setSimcParsed] = useState(null);
 
-  const [content,  setContent]  = useState([]);
-  const [priority, setPriority] = useState(PRIORITIES[0]);
+  // Content focus — drives the whole prompt direction
+  const [contentFocus, setContentFocus] = useState(null); // "M+" | "Raid" | "Both"
+
+  // Friend comparison
+  const [friendUrl,     setFriendUrl]     = useState("");
+  const [friendData,    setFriendData]    = useState(null);
+  const [friendLoading, setFriendLoading] = useState(false);
+  const [friendError,   setFriendError]   = useState("");
+
+  // Benchmark note injected into session bar after first analysis
+  const [benchmarkNote, setBenchmarkNote] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
   const [loading,     setLoading]     = useState(false);
   const [followUp,    setFollowUp]    = useState("");
@@ -916,18 +930,26 @@ export default function Vaultwright() {
     return () => clearTimeout(timer);
   }, [simcString, inputMode, parseSimC]);
 
-  // Raider.IO fetch
+  // Raider.IO fetch — parses raider.io/characters/us/realm/name URLs
+  const parseRioUrl = (url) => {
+    // Accept full URL or just "us/realm/name" shorthand
+    const m = url.trim().match(/(?:raider\.io\/characters\/)?([a-z]{2})\/([^/]+)\/([^/?#]+)/i);
+    if (!m) return null;
+    return { region: m[1].toLowerCase(), realm: m[2], name: m[3] };
+  };
+
   const fetchRaiderIO = async () => {
-    if (!rioName.trim() || !rioRealm.trim()) return;
+    const parsed = parseRioUrl(rioUrl);
+    if (!parsed) { setRioError("Paste your Raider.IO profile URL — e.g. raider.io/characters/us/stormrage/Arthas"); return; }
     setRioLoading(true); setRioError(""); setDetectedGear([]);
     try {
-      const res = await fetchWithRetry(`/api/raiderio?region=${rioRegion}&realm=${encodeURIComponent(toRealmSlug(rioRealm))}&name=${encodeURIComponent(rioName.trim())}`);
+      const res = await fetchWithRetry(`/api/raiderio?region=${parsed.region}&realm=${encodeURIComponent(toRealmSlug(parsed.realm))}&name=${encodeURIComponent(parsed.name)}`);
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        if (res.status === 404) throw new Error(`Character "${rioName}" not found on ${rioRealm} (${rioRegion.toUpperCase()}). Check the name and realm spelling.`);
-        if (res.status === 429) throw new Error("Raider.IO rate limit hit — wait 10 seconds and try again.");
+        if (res.status === 404) throw new Error(`Character not found. Make sure you log out in-game first so Raider.IO has current data.`);
+        if (res.status === 429) throw new Error("Raider.IO rate limit — wait 10 seconds and try again.");
         if (res.status >= 500) throw new Error("Raider.IO is having issues right now. Try again in a moment.");
-        throw new Error(e.message || `Lookup failed (${res.status}). Check name, realm and region.`);
+        throw new Error(e.message || `Lookup failed (${res.status}). Double-check your profile URL.`);
       }
       const data = await res.json();
       if (data.class)            setDetectedClass(data.class);
@@ -942,9 +964,45 @@ export default function Vaultwright() {
     setRioLoading(false);
   };
 
+  // Warcraft Logs fetch
+  const fetchWCL = async () => {
+    if (!wclUrl.trim()) return;
+    setWclLoading(true); setWclError(""); setWclData(null);
+    try {
+      const res = await fetchWithRetry("/api/wclogs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: wclUrl.trim() }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || `WCL fetch failed (${res.status})`);
+      }
+      const data = await res.json();
+      setWclData(data);
+      // If WCL returned player info, use it for class/spec detection
+      if (data.report?.player) {
+        const p = data.report.player;
+        if (p.type)  setDetectedClass(p.type);
+        if (p.specs?.[0]?.spec) setDetectedSpec(p.specs[0].spec);
+      }
+    } catch (e) { setWclError(e.message || "Failed to load log. Check the URL."); }
+    setWclLoading(false);
+  };
+
   const buildGearContext = () => {
     if (inputMode === "rio" && gearSummary) return gearSummary;
     if (inputMode === "simc" && simcParsed) return `SimC — ${simcParsed.filled} items${simcParsed.avgIlvl ? `, avg ${simcParsed.avgIlvl}` : ""}:\n` + simcParsed.gear.filter(g=>g.name).map(g=>`${g.label}: ${g.name}${g.ilvl?` (ilvl ${g.ilvl})`:""}`).join("\n");
+    if (inputMode === "wcl" && wclData) {
+      if (wclData.placeholder) return `Warcraft Logs loaded (report: ${wclData.reportId}) — API key not yet configured. Give best general advice.`;
+      const p = wclData.report?.player;
+      const fights = wclData.report?.fights || [];
+      return [
+        p ? `WCL Player: ${p.name} (${p.type} — ${p.specs?.[0]?.spec || "Unknown"})` : "WCL data loaded",
+        fights.length ? `Fights analysed: ${fights.slice(0,3).map(f => `${f.name}${f.keystoneLevel ? ` +${f.keystoneLevel}` : ""}${f.averageItemLevel ? ` (avg ${Math.round(f.averageItemLevel)} ilvl)` : ""}`).join(", ")}` : "",
+        "Note: No gear list from WCL — focus advice on performance patterns and biggest mechanical improvements.",
+      ].filter(Boolean).join("\n");
+    }
     return "No gear data — give best general spec advice.";
   };
 
@@ -976,34 +1034,46 @@ export default function Vaultwright() {
         type: "text",
         text: `${PATCH_CONTEXT}
 
-You are Vaultwright — a sharp WoW gear advisor for Midnight Season 1. Give direct, specific, actionable advice. Explain the mechanical WHY behind every recommendation. Reference the player's actual gear items and ilvls when available.
+You are Vaultwright — a straight-talking WoW gear coach for Midnight Season 1. Your audience is a mid-tier player — someone doing heroic raid or 10-15 keys who feels stuck and doesn't know why. They don't sim. They've skimmed Icy Veins. They need honest, specific, prioritised advice — not a textbook.
 
 Player: ${activeSpec || "Unknown Spec"} ${activeClass || "Unknown Class"}
-Content: ${content.join(", ") || "general play"}
-Goal: ${priority}
+Content focus: ${contentFocus === "M+" ? "Mythic+ dungeons (short fights, burst AoE, movement)" : contentFocus === "Raid" ? "Raid (longer fights, sustained single-target, positional play)" : "Mix of M+ and Raid"}
+${contentFocus === "M+" ? "Prioritise: burst AoE, short CD embellishments, mobility. Downweight: sustained ST, long ramp-up talents." : contentFocus === "Raid" ? "Prioritise: sustained ST/cleave, long CD embellishments, raid utility. Downweight: pure AoE, mobility-only gains." : "Balance advice between M+ and Raid — flag where they differ significantly."}
 
 Gear:
 ${gear}
 
-VOLATILE ADVICE RULE: For gems, enchants, flasks, potions, and stat weights — these change with patches. Use web_search to verify current recommendations from icy-veins.com or method.gg before stating them as fact. If search confirms our knowledge, state it confidently. If search finds a discrepancy, lead with the current information and note the change.
+VOLATILE ADVICE RULE: For gems, enchants, flasks, and stat weights — use web_search to verify current recommendations from icy-veins.com or method.gg before stating them. If search confirms our knowledge, state confidently. If search finds a discrepancy, lead with the current info.
 
 Rules:
-- Use ## for section headers, **bold** for key stats/items/numbers, bullet points (- ) for lists.
-- NEVER use markdown tables — write lists instead. Tables break on mobile.
-- Write for a newer player. Briefly explain acronyms (e.g. "Dawncrests — the upgrade currency").
-- Lead with the single most important recommendation, stated simply.
-- Name actual items from the player's gear, give exact ilvl numbers and Dawncrest costs.
-- Keep each section tight — 3-5 bullet points max. No walls of text.
-- Be direct. If something is wrong with their gear, say it plainly.
-- End every response with a one-line "📖 Verify at: icy-veins.com/wow/[spec-slug]" link for the player's spec.`,
+- Use ## headers, **bold** for stats/items/numbers, bullet points for lists
+- NEVER use markdown tables — lists only
+- Explain acronyms briefly (e.g. "Dawncrests — the upgrade currency")
+- Be direct and honest. If gear is fine and the problem is mechanical, say so
+- Name actual items, give exact ilvl numbers, give Dawncrest costs
+- 3-5 bullets per section max — no walls of text
+- End with: 📖 icy-veins.com/wow/[spec-class-slug]`,
       },
     ];
   };
 
   const sendInitial = async () => {
-    setLoading(true); setStep(3); setOracleMode("analysis");
+    setLoading(true); setStep(1); setOracleMode("problem");
     setDailyCount(incrementRate());
-    const msg = `Analyse my ${activeSpec} ${activeClass} gear:\n\n## Stat Priority\nWhat stats I should prioritize and why they synergize with my Apex Talent.\n\n## Biggest Upgrades\nMy weakest slots ranked by impact.\n\n## Crafting Plan\nWhat to craft with Sparks, which Embellishments to pair, and which slots are off-limits.\n\n## Immediate Wins\nFree upgrades, wasted Dawncrests, or anything obviously wrong.`;
+    const contentCtx = contentFocus === "M+" ? "Mythic+ (10-15 key range)" : contentFocus === "Raid" ? "Heroic/early Mythic raid" : "mix of M+ and Raid";
+    const msg = `I'm a ${activeSpec} ${activeClass} doing ${contentCtx}. I feel stuck and don't know what's actually holding me back.
+
+## The Problem
+What is the single biggest thing holding back my performance right now? Be specific and honest. If my gear is fine and the problem is something else (bad embellishment choice, wrong stat spread, undervalued slot), say so directly.
+
+## Fix This Week
+Give me 2-3 ordered actions for THIS WEEK ONLY. Not a wishlist — a real priority order based on impact. Be ruthless about what doesn't matter yet.
+
+## Skip For Now
+What looks wrong but isn't actually my priority? What should I stop worrying about?
+
+## Where I Stand
+Give me a rough benchmark: where should a ${activeSpec} ${activeClass} doing ${contentCtx} be at, and how far am I from the next performance tier?`;
     setChatHistory([{ role: "user", content: msg, display: "Gear Analysis" }]);
     try {
       const text = await callClaude(sysPrompt(), [{ role: "user", content: msg }]);
@@ -1043,6 +1113,50 @@ Rules:
     setLoading(false);
   };
 
+  const sendCompare = async () => {
+    if (!friendUrl.trim() || loading) return;
+    setFriendLoading(true); setFriendError("");
+    // Fetch friend's RIO data
+    const parsed = parseRioUrl(friendUrl);
+    if (!parsed) { setFriendError("Paste your friend's Raider.IO profile URL"); setFriendLoading(false); return; }
+    try {
+      const res = await fetchWithRetry(`/api/raiderio?region=${parsed.region}&realm=${encodeURIComponent(toRealmSlug(parsed.realm))}&name=${encodeURIComponent(parsed.name)}`);
+      if (!res.ok) throw new Error("Couldn't find that character. Check the URL.");
+      const data = await res.json();
+      const items = data.gear?.items || {};
+      const gearArray = GEAR_SLOTS.map(slot => { const item = items[slot.key]; return { ...slot, name: item?.name || "", ilvl: item?.item_level || null }; });
+      const filled = gearArray.filter(g => g.name && g.ilvl);
+      const avg = filled.length ? Math.round(filled.reduce((a,g)=>a+g.ilvl,0)/filled.length) : 0;
+      const friendSummary = `Friend: ${data.name} (${data.class} — ${data.active_spec_name}), avg ilvl ${avg}.\nGear:\n` + filled.map(g=>`${g.label}: ${g.name} (ilvl ${g.ilvl})`).join("\n");
+      setFriendData({ name: data.name, cls: data.class, spec: data.active_spec_name, avg, summary: friendSummary });
+
+      const msg = `Compare me to my friend.
+
+MY GEAR:
+${buildGearContext()}
+
+FRIEND'S GEAR:
+${friendSummary}
+
+## The Gap
+Where are they actually ahead? Slot by slot, what's different? Is it gear or is it something else?
+
+## What To Focus On
+Given this comparison, what's my single highest-leverage action to close the gap?
+
+## What's Already Fine
+Where am I actually equal to or ahead of my friend?`;
+
+      const hist = [...chatHistory, { role: "user", content: msg, display: `Compare vs ${data.name}` }];
+      setChatHistory(hist);
+      setLoading(true);
+      const reply = await callClaude(sysPrompt(true), hist.map(m => ({ role: m.role, content: m.content })));
+      setChatHistory([...hist, { role: "assistant", content: reply }]);
+    } catch (e) { setFriendError(e.message || "Comparison failed."); }
+    setFriendLoading(false);
+    setLoading(false);
+  };
+
   const sendWeeklyPlan = async () => {
     setLoading(true);
     setDailyCount(incrementRate());
@@ -1058,9 +1172,13 @@ Rules:
 
   const reset = () => {
     setStep(0); setInputMode(null); setDetectedClass(""); setDetectedSpec("");
-    setDetectedGear([]); setGearSummary(""); setRioName(""); setRioRealm(""); setRioRegion("us"); setRioError("");
-    setSimcString(""); setSimcParsed(null); setContent([]); setPriority(PRIORITIES[0]);
-    setChatHistory([]); setFollowUp(""); setOracleMode("analysis");
+    setDetectedGear([]); setGearSummary(""); setRioUrl(""); setRioError("");
+    setWclUrl(""); setWclData(null); setWclError("");
+    setSimcString(""); setSimcParsed(null);
+    setContentFocus(null);
+    setFriendUrl(""); setFriendData(null); setFriendError("");
+    setBenchmarkNote("");
+    setChatHistory([]); setFollowUp(""); setOracleMode("problem");
     setVaultItems(["","","","","","","","",""]);
     setSparksAvailable("1"); setHeroCrestsAvail(""); setMythCrestsAvail("");
   };
@@ -1097,78 +1215,87 @@ Rules:
             <p style={{ color: T.textDim, fontSize: 11, margin: 0, letterSpacing: 3, fontFamily: "'Cinzel', serif" }}>MIDNIGHT GEAR ADVISOR</p>
           </div>
 
-          {step > 0 && step < 3 && <Breadcrumb steps={STEPS} current={step} />}
+          {false && <Breadcrumb steps={STEPS} current={step} />} {/* hidden — 2-step flow */}
 
-          {/* ══ Step 0: Input method ══ */}
+          {/* ══ Step 0: Input + content focus ══ */}
           {step === 0 && (
             <div style={S.card} className="fu">
-              <p style={{ color: T.textSub, fontSize: 14, margin: "0 0 20px", lineHeight: 1.6, fontWeight: 500 }}>How do you want to load your character?</p>
+              {/* Content focus — first, prominent */}
+              <p style={{ color: T.text, fontSize: 15, fontWeight: 600, margin: "0 0 10px" }}>What do you mainly play?</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 24 }}>
+                {[
+                  { key: "M+",   label: "Mythic+",    sub: "10–15 keys" },
+                  { key: "Raid", label: "Raid",        sub: "Heroic / Mythic" },
+                  { key: "Both", label: "Both",        sub: "Mixed" },
+                ].map(({ key, label, sub }) => (
+                  <button key={key} onClick={() => setContentFocus(key)} style={{
+                    background: contentFocus === key ? `${T.gold}18` : T.surface,
+                    border: `1px solid ${contentFocus === key ? T.gold : T.border}`,
+                    borderRadius: 12, padding: "14px 8px", cursor: "pointer",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                    transition: "all 0.15s", WebkitTapHighlightColor: "transparent",
+                  }}>
+                    <span style={{ color: contentFocus === key ? T.goldBright : T.text, fontSize: 14, fontWeight: 600 }}>{label}</span>
+                    <span style={{ color: T.textSub, fontSize: 11 }}>{sub}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Input mode */}
+              <p style={{ color: T.text, fontSize: 15, fontWeight: 600, margin: "0 0 10px" }}>How do you want to load your character?</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <ModeCard icon={Link2} title="Character Lookup" badge="Easiest" badgeColor={T.green}
-                  description="Enter your name and realm — we pull your live gear from Raider.IO."
+                <ModeCard icon={Link2} title="Raider.IO Profile" badge="Easiest" badgeColor={T.green}
+                  description="Paste your profile URL — we pull your live gear automatically."
                   selected={inputMode === "rio"} onClick={() => setInputMode("rio")} />
+                <ModeCard icon={BarChart3} title="Warcraft Logs" badge="Deepest Insight" badgeColor="#8b6fff"
+                  description="Paste a log URL — we'll analyse your actual performance, not just gear."
+                  selected={inputMode === "wcl"} onClick={() => setInputMode("wcl")} />
                 <ModeCard icon={FileText} title="SimC String" badge="Most Detail" badgeColor={T.gold}
-                  description="Paste your /simc export for the deepest analysis including enchants and gems."
+                  description="Paste your /simc export for full enchant and gem analysis."
                   selected={inputMode === "simc"} onClick={() => setInputMode("simc")} />
               </div>
-              {inputMode && (
+              {(inputMode && contentFocus) && (
                 <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
                   <button style={S.primaryBtn} onClick={() => setStep(1)}>Continue →</button>
                 </div>
               )}
+              {(inputMode && !contentFocus) && (
+                <p style={{ color: T.textSub, fontSize: 13, marginTop: 12, textAlign: "center", fontStyle: "italic" }}>Pick M+, Raid, or Both above to continue</p>
+              )}
             </div>
           )}
 
-          {/* ══ Step 1: Gear input ══ */}
+          {/* ══ Step 1: Data input ══ */}
           {step === 1 && (
             <div style={S.card} className="fu">
               <button style={S.backBtn} onClick={() => setStep(0)}>
                 <ChevronLeft size={16} strokeWidth={2} /> Back
               </button>
 
-              {/* Raider.IO */}
+              {/* Raider.IO — URL paste */}
               {inputMode === "rio" && (
                 <>
-                  <span style={S.label}>Character Lookup</span>
-                  <p style={{ color: T.textSub, fontSize: 14, marginBottom: 18, marginTop: 0, lineHeight: 1.5 }}>Log out in your current gear first so Raider.IO has the latest data.</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 14 }}>
-                    <div>
-                      <span style={S.label}>Character Name</span>
-                      <input style={S.input} placeholder="Arthas" value={rioName} onChange={e => setRioName(e.target.value)} onKeyDown={e => e.key === "Enter" && fetchRaiderIO()} />
-                    </div>
-                    <div>
-                      <span style={S.label}>Realm</span>
-                      <select
-                        style={{ ...S.input, cursor: "pointer" }}
-                        value={rioRealm}
-                        onChange={e => setRioRealm(e.target.value)}
-                      >
-                        <option value="">Select realm...</option>
-                        {(WOW_REALMS[rioRegion] || WOW_REALMS.us).map(r => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <span style={S.label}>Region</span>
-                      <select style={{ ...S.input, cursor: "pointer" }} value={rioRegion} onChange={e => { setRioRegion(e.target.value); setRioRealm(""); }}>
-                        {REGIONS.map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <button style={{ ...S.primaryBtn, width: "100%", opacity: rioLoading || !rioName || !rioRealm ? 0.45 : 1 }} onClick={fetchRaiderIO} disabled={rioLoading || !rioName || !rioRealm}>
+                  <span style={S.label}>Raider.IO Profile URL</span>
+                  <p style={{ color: T.textSub, fontSize: 14, marginBottom: 10, marginTop: 0, lineHeight: 1.5 }}>
+                    Log out in-game first so your current gear shows. Then copy your URL from Raider.IO.
+                  </p>
+                  <p style={{ color: T.textDim, fontSize: 12, marginBottom: 14, fontStyle: "italic", marginTop: 0 }}>
+                    e.g. raider.io/characters/us/stormrage/Arthas
+                  </p>
+                  <input style={S.input} placeholder="raider.io/characters/us/realm/name"
+                    value={rioUrl} onChange={e => setRioUrl(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && fetchRaiderIO()} />
+                  <button style={{ ...S.primaryBtn, width: "100%", marginTop: 12, opacity: rioLoading || !rioUrl.trim() ? 0.45 : 1 }}
+                    onClick={fetchRaiderIO} disabled={rioLoading || !rioUrl.trim()}>
                     {rioLoading
-                      ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />Searching...</span>
-                      : "Find My Character"}
+                      ? <span style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}><Loader2 size={16} style={{animation:"spin 1s linear infinite"}} />Loading...</span>
+                      : "Load My Character"}
                   </button>
                   {rioLoading && <SkeletonGearGrid />}
                   {rioError && (
                     <div style={{ marginTop: 12, padding: "12px 14px", background: `${T.red}12`, border: `1px solid ${T.red}40`, borderRadius: 8, display: "flex", gap: 10, alignItems: "flex-start" }}>
                       <AlertCircle size={16} color={T.red} style={{ flexShrink: 0, marginTop: 1 }} />
-                      <div>
-                        <p style={{ color: T.red, fontSize: 14, margin: "0 0 3px", fontWeight: 600 }}>{rioError}</p>
-                        <p style={{ color: T.textSub, fontSize: 13, margin: 0 }}>Pick your realm from the dropdown and check your region is correct.</p>
-                      </div>
+                      <p style={{ color: T.red, fontSize: 14, margin: 0 }}>{rioError}</p>
                     </div>
                   )}
                   {detectedGear.length > 0 && (
@@ -1186,6 +1313,51 @@ Rules:
                       </div>
                     </>
                   )}
+                </>
+              )}
+
+              {/* WCL */}
+              {inputMode === "wcl" && (
+                <>
+                  <span style={S.label}>Warcraft Logs URL</span>
+                  <p style={{ color: T.textSub, fontSize: 14, marginBottom: 10, marginTop: 0, lineHeight: 1.5 }}>
+                    Paste a log URL — ideally a recent M+ run or raid kill. Vaultwright will analyse your actual performance patterns.
+                  </p>
+                  <p style={{ color: T.textDim, fontSize: 12, marginBottom: 14, fontStyle: "italic", marginTop: 0 }}>
+                    e.g. warcraftlogs.com/reports/abc123#fight=last&source=5
+                  </p>
+                  <input style={S.input} placeholder="warcraftlogs.com/reports/..."
+                    value={wclUrl} onChange={e => setWclUrl(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && fetchWCL()} />
+                  <button style={{ ...S.primaryBtn, width: "100%", marginTop: 12, opacity: wclLoading || !wclUrl.trim() ? 0.45 : 1 }}
+                    onClick={fetchWCL} disabled={wclLoading || !wclUrl.trim()}>
+                    {wclLoading
+                      ? <span style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}><Loader2 size={16} style={{animation:"spin 1s linear infinite"}} />Loading log...</span>
+                      : "Load Log"}
+                  </button>
+                  {wclError && (
+                    <div style={{ marginTop: 12, padding: "12px 14px", background: `${T.red}12`, border: `1px solid ${T.red}40`, borderRadius: 8 }}>
+                      <p style={{ color: T.red, fontSize: 14, margin: 0 }}>{wclError}</p>
+                    </div>
+                  )}
+                  {wclData && (
+                    <>
+                      <div style={{ marginTop: 12, padding: "10px 14px", background: `${T.green}12`, border: `1px solid ${T.green}40`, borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                        <CheckCircle2 size={16} color={T.green} />
+                        <span style={{ color: T.green, fontSize: 14, fontWeight: 600 }}>
+                          {wclData.placeholder
+                            ? `Log loaded (WCL API key not yet configured — will give general advice)`
+                            : `Log loaded — ${wclData.report?.fights?.length || 0} fight(s) found`}
+                        </span>
+                      </div>
+                      <button style={{ ...S.primaryBtn, width: "100%", marginTop: 14 }} onClick={sendInitial}>
+                        Find My Problem →
+                      </button>
+                    </>
+                  )}
+                  <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+                    <button style={S.ghostBtn} onClick={sendInitial}>Skip — paste URL later</button>
+                  </div>
                 </>
               )}
 
@@ -1217,13 +1389,13 @@ Rules:
                       </div>
                       <GearPreviewGrid gear={simcParsed.gear} />
                       <div style={{ marginTop: 16 }}>
-                        <button style={{ ...S.primaryBtn, width: "100%" }} onClick={() => setStep(2)}>Analyse this gear →</button>
+                        <button style={{ ...S.primaryBtn, width: "100%" }} onClick={sendInitial}>Find My Problem →</button>
                       </div>
                     </>
                   )}
                   {!simcParsed && (
                     <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
-                      <button style={S.ghostBtn} onClick={() => setStep(2)}>Skip — general advice</button>
+                      <button style={S.ghostBtn} onClick={sendInitial}>Skip — general advice</button>
                     </div>
                   )}
                 </>
@@ -1231,69 +1403,48 @@ Rules:
             </div>
           )}
 
-          {/* ══ Step 2: Configure ══ */}
-          {step === 2 && (
-            <div style={S.card} className="fu">
-              <button style={S.backBtn} onClick={() => setStep(1)}><ChevronLeft size={16} strokeWidth={2} /> Back</button>
-              {activeClass && (
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, padding: "12px 14px", background: T.bg, borderRadius: 12, border: `1px solid ${T.border}` }}>
-                  {classData && <ClassIcon name={classData.name} color={classData.color} size={32} />}
-                  <div>
-                    <p style={{ color: T.text, fontSize: 15, margin: 0, fontWeight: 600 }}>{activeSpec} {activeClass}</p>
-                    <p style={{ color: T.textSub, fontSize: 12, margin: "2px 0 0" }}>
-                      {inputMode === "rio" ? "Raider.IO" : "SimC"} · {detectedGear.filter(g=>g.name).length || simcParsed?.filled || 0} items
-                    </p>
-                  </div>
-                </div>
-              )}
-              <span style={S.label}>Content You Play</span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
-                {CONTENT_TYPES.map(c => (
-                  <button key={c} style={S.tag(content.includes(c))} onClick={() => setContent(p => p.includes(c) ? p.filter(x=>x!==c) : [...p,c])}>{c}</button>
-                ))}
-              </div>
-              <span style={S.label}>Your Goal</span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
-                {PRIORITIES.map(p => (
-                  <button key={p} style={S.tag(priority === p)} onClick={() => setPriority(p)}>{p}</button>
-                ))}
-              </div>
-              <p style={{ color: T.textDim, fontSize: 13, margin: "0 0 16px", fontStyle: "italic" }}>Both optional — skip and Vaultwright makes sensible assumptions.</p>
-              <button style={{ ...S.primaryBtn, width: "100%" }} onClick={sendInitial}>Consult Vaultwright →</button>
-            </div>
-          )}
 
-          {/* ══ Step 3: Oracle ══ */}
-          {step === 3 && (
+
+          {/* ══ Step 1: Oracle ══ */}
+          {step === 1 && (
             <div className="fu">
               {/* Session bar */}
-              <div style={{ ...S.card, padding: "14px 18px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  {classData && <ClassIcon name={classData.name} color={classData.color} size={30} />}
-                  <div>
-                    <p style={{ color: T.text, fontSize: 14, margin: 0, fontWeight: 600 }}>{activeSpec || "?"} {activeClass || "Unknown"}</p>
-                    <p style={{ color: T.textSub, fontSize: 12, margin: "2px 0 0" }}>
-                      {inputMode === "rio" ? "Raider.IO" : "SimC"} · {content.length > 0 ? (content.length > 2 ? `${content.slice(0,2).join(", ")} +${content.length-2}` : content.join(", ")) : "All content"}
-                    </p>
+              <div style={{ ...S.card, padding: "14px 18px", marginBottom: 12, borderRadius: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {classData && <ClassIcon name={classData.name} color={classData.color} size={30} />}
+                    <div>
+                      <p style={{ color: T.text, fontSize: 14, margin: 0, fontWeight: 600 }}>{activeSpec || "?"} {activeClass || "Unknown"}</p>
+                      <p style={{ color: T.textSub, fontSize: 12, margin: "2px 0 0" }}>
+                        {inputMode === "rio" ? "Raider.IO" : inputMode === "wcl" ? "Warcraft Logs" : "SimC"} · {contentFocus || "All content"}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                    <button style={S.ghostBtn} onClick={reset}>New Session</button>
+                    <span style={{ fontSize: 10, color: dailyCount >= 4 ? T.red : T.textDim, fontFamily: "'Cinzel', serif", letterSpacing: 1 }}>
+                      {dailyCount}/5 TODAY
+                    </span>
                   </div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                  <button style={S.ghostBtn} onClick={reset}>New Session</button>
-                  <span style={{ fontSize: 10, color: dailyCount >= 4 ? T.red : T.textDim, fontFamily: "'Cinzel', serif", letterSpacing: 1 }}>
-                    {dailyCount}/5 TODAY
-                  </span>
-                </div>
+                {benchmarkNote && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12 }}>📊</span>
+                    <p style={{ color: T.textSub, fontSize: 12, margin: 0, lineHeight: 1.4 }}>{benchmarkNote}</p>
+                  </div>
+                )}
               </div>
 
               {/* Tabs */}
-              <div role="tablist" aria-label="Oracle modes" style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-                <OracleTab label="Analysis" icon={Sword}    active={oracleMode==="analysis"} onClick={() => setOracleMode("analysis")} />
-                <OracleTab label="Vault"    icon={Trophy}   active={oracleMode==="vault"}    onClick={() => setOracleMode("vault")} />
-                <OracleTab label="Weekly"   icon={Calendar} active={oracleMode==="weekly"}   onClick={() => setOracleMode("weekly")} />
+              <div role="tablist" aria-label="Oracle modes" style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
+                <OracleTab label="The Problem" icon={Sword}    active={oracleMode==="problem"}  onClick={() => setOracleMode("problem")} />
+                <OracleTab label="Vault"       icon={Trophy}   active={oracleMode==="vault"}    onClick={() => setOracleMode("vault")} />
+                <OracleTab label="Weekly"      icon={Calendar} active={oracleMode==="weekly"}   onClick={() => setOracleMode("weekly")} />
+                <OracleTab label="Compare"     icon={BarChart3} active={oracleMode==="compare"} onClick={() => setOracleMode("compare")} />
               </div>
 
-              {/* Analysis tab */}
-              {oracleMode === "analysis" && (
+              {/* Problem tab */}
+              {oracleMode === "problem" && (
                 <div style={S.card}>
                   {chatHistory.length === 0 && !loading && (
                     <AnalysisEmptyState specName={activeSpec} className={activeClass} onRun={sendInitial} loading={loading} />
@@ -1345,7 +1496,7 @@ Rules:
                         <button style={{ ...S.primaryBtn, padding: "12px 18px", flexShrink: 0, opacity: followUp.trim() ? 1 : 0.45 }} onClick={sendFollowUp} disabled={!followUp.trim()}>Ask</button>
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                        {["Explain my Apex Talent", "Best Embellishments?", "What should I craft?", "When does ilvl beat stats?"].map(q => (
+                        {["Is my ilvl actually the problem?", "What's my next power spike?", "Am I missing something obvious?", "Why am I lower than the top players in my guild?"].map(q => (
                           <button key={q} style={{ ...S.tag(false), fontSize: 12, padding: "9px 14px", borderRadius: 20 }} onClick={() => setFollowUp(q)}>{q}</button>
                         ))}
                       </div>
@@ -1425,6 +1576,45 @@ Rules:
                     return (
                       <div key={i} style={{ ...S.chatMsg("assistant"), marginTop: 14 }}>
                         <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, marginBottom: 8, color: T.textDim, fontWeight: 700 }}>VAULTWRIGHT — WEEK PLAN</p>
+                        <ResponseBlock content={resp.content} showCopy={true} spec={activeSpec} cls={activeClass} />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {/* Compare tab */}
+              {oracleMode === "compare" && (
+                <div style={S.card}>
+                  <p style={{ color: T.text, fontSize: 15, fontWeight: 600, margin: "0 0 6px" }}>Compare to a friend</p>
+                  <p style={{ color: T.textSub, fontSize: 13, margin: "0 0 16px", lineHeight: 1.5 }}>
+                    Paste their Raider.IO URL and Vaultwright will show you exactly where the gap is — gear, stats, or something else.
+                  </p>
+                  <input style={S.input} placeholder="raider.io/characters/us/realm/friend"
+                    value={friendUrl} onChange={e => setFriendUrl(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && sendCompare()} />
+                  {friendError && (
+                    <p style={{ color: T.red, fontSize: 13, margin: "8px 0 0" }}>{friendError}</p>
+                  )}
+                  {friendData && (
+                    <div style={{ marginTop: 10, padding: "10px 14px", background: T.bg, borderRadius: 8, border: `1px solid ${T.border}` }}>
+                      <p style={{ color: T.textSub, fontSize: 13, margin: 0 }}>
+                        Comparing against <strong style={{ color: T.text }}>{friendData.name}</strong> — {friendData.spec} {friendData.cls}, avg {friendData.avg} ilvl
+                      </p>
+                    </div>
+                  )}
+                  <button style={{ ...S.primaryBtn, width: "100%", marginTop: 12, opacity: (friendLoading || loading || !friendUrl.trim()) ? 0.45 : 1 }}
+                    onClick={sendCompare} disabled={friendLoading || loading || !friendUrl.trim()}>
+                    {(friendLoading || loading)
+                      ? <span style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}><Loader2 size={16} style={{animation:"spin 1s linear infinite"}} />Comparing...</span>
+                      : "Show Me the Gap"}
+                  </button>
+                  {chatHistory.map((msg, i) => {
+                    if (!msg.display?.startsWith("Compare") || msg.role !== "user") return null;
+                    const resp = chatHistory[i + 1];
+                    if (!resp || resp.role !== "assistant") return null;
+                    return (
+                      <div key={i} style={{ ...S.chatMsg("assistant"), marginTop: 14 }}>
+                        <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, marginBottom: 8, color: T.textDim, fontWeight: 700 }}>VAULTWRIGHT — COMPARISON</p>
                         <ResponseBlock content={resp.content} showCopy={true} spec={activeSpec} cls={activeClass} />
                       </div>
                     );
