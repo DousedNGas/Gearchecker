@@ -1144,14 +1144,16 @@ Give me a rough benchmark: where should a ${activeSpec} ${activeClass} doing ${c
       const text = await callClaude(sysPrompt(), [{ role: "user", content: msg }]);
       setChatHistory([{ role: "user", content: msg, display: "Gear Analysis" }, { role: "assistant", content: text }]);
       // Extract benchmark note from "Where I Stand" section for session bar
-      const standMatch = text.match(/##\s*Where I Stand[\s\S]*?(?=##|$)/i);
-      if (standMatch) {
-        // Pull first sentence/bullet after the header — strip markdown
-        const raw = standMatch[0].replace(/##[^
-]*/,"").trim();
-        const first = raw.split(/
-/).find(l => l.trim().length > 10);
-        if (first) setBenchmarkNote(first.replace(/^[-*•]\s*/, "").replace(/\*\*/g, "").slice(0, 120));
+      const standIdx = text.indexOf("## Where I Stand");
+      if (standIdx !== -1) {
+        const afterHeader = text.slice(standIdx + 18);
+        const nextSection = afterHeader.indexOf("##");
+        const section = (nextSection === -1 ? afterHeader : afterHeader.slice(0, nextSection)).trim();
+        const firstLine = section.split("\n").find(l => l.trim().length > 10);
+        if (firstLine) {
+          const clean = firstLine.replace(/^[-*•\s]+/, "").replace(/\*\*/g, "").trim();
+          setBenchmarkNote(clean.slice(0, 140));
+        }
       }
     } catch (e) {
       setChatHistory([{ role: "user", content: msg, display: "Gear Analysis" }, { role: "assistant", content: `Error: ${e.message}` }]);
