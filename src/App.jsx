@@ -903,18 +903,26 @@ export default function Vaultwright() {
     const slotMap = { head:"head", neck:"neck", shoulder:"shoulder", back:"back", chest:"chest", wrist:"wrist", hands:"hands", waist:"waist", legs:"legs", feet:"feet", finger1:"finger1", finger2:"finger2", trinket1:"trinket1", trinket2:"trinket2", main_hand:"mainhand", off_hand:"offhand" };
     const classNameMap = { deathknight:"Death Knight", demonhunter:"Demon Hunter", druid:"Druid", evoker:"Evoker", hunter:"Hunter", mage:"Mage", monk:"Monk", paladin:"Paladin", priest:"Priest", rogue:"Rogue", shaman:"Shaman", warlock:"Warlock", warrior:"Warrior" };
     const found = {}; const ilvls = []; let parsedClass = ""; let parsedSpec = "";
-    for (const line of str.split("\n")) {
-      const t = line.trim();
-      if (t.startsWith("#") || !t.includes("=")) continue;
+    const rawLines = str.split("\n");
+
+    for (let i = 0; i < rawLines.length; i++) {
+      const t = rawLines[i].trim();
+      if (!t || !t.includes("=")) continue;
+      if (t.startsWith("#")) continue;
+
       const eqIdx = t.indexOf("=");
       const rawKey = t.slice(0, eqIdx).trim();
       const val = t.slice(eqIdx + 1).trim().replace(/"/g, "");
-      if (!parsedClass && classNameMap[rawKey.toLowerCase()]) { parsedClass = classNameMap[rawKey.toLowerCase()]; continue; }
+
+      if (!parsedClass && classNameMap[rawKey.toLowerCase()]) {
+        parsedClass = classNameMap[rawKey.toLowerCase()]; continue;
+      }
+
       if (rawKey === "spec") {
         const specMap = {
           beast_mastery:"Beast Mastery", beastmastery:"Beast Mastery",
           holy:"Holy", protection:"Protection", retribution:"Retribution",
-          blood:"Blood", frost:"Frost", unholy:"Unholy",
+          blood:"Blood", frost:"Frost DK", unholy:"Unholy",
           havoc:"Havoc", vengeance:"Vengeance", devourer:"Devourer",
           balance:"Balance", feral:"Feral", guardian:"Guardian", restoration:"Restoration",
           devastation:"Devastation", preservation:"Preservation", augmentation:"Augmentation",
@@ -928,21 +936,46 @@ export default function Vaultwright() {
           arms:"Arms", fury:"Fury",
         };
         const key = val.toLowerCase().replace(/[^a-z_]/g, "");
-        parsedSpec = specMap[key] || (val.replace(/_/g," ").replace(/\w/g,c=>c.toUpperCase()));
+        parsedSpec = specMap[key] || val.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase());
         continue;
       }
+
       const slotKey = slotMap[rawKey];
-      if (slotKey) {
-        const itemName = val.split(",")[0].replace(/_/g, " ").trim();
-        const ilvlM = val.match(/ilevel=(\d+)/);
-        const ilvl = ilvlM ? parseInt(ilvlM[1]) : null;
-        if (ilvl) ilvls.push(ilvl);
-        const hasEnchant = val.includes("enchant=");
-        const hasGem = val.includes("gem_id=") || val.includes(",gem");
-        const bonusIds = (val.match(/bonus_id=([\d/:]+)/) || [])[1] || "";
-        found[slotKey] = { key: slotKey, name: itemName || "", ilvl, hasEnchant, hasGem, bonusIds };
+      if (!slotKey) continue;
+
+      // Real SimC 12.x format: item name + ilvl are in the comment line above
+      //   # Silvermoon Sunveil (253)
+      //   head=,id=266431,enchant_id=7960,bonus_id=...
+      let itemName = "";
+      let ilvl = null;
+      for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
+        const prev = rawLines[j].trim();
+        const m = prev.match(/^#\s+(.+?)\s+\((\d+)\)\s*$/);
+        if (m) { itemName = m[1]; ilvl = parseInt(m[2]); break; }
+      }
+
+      // Fallback: inline name (older format head=item_name,id=...)
+      if (!itemName) {
+        const inline = val.split(",")[0].replace(/_/g, " ").trim();
+        if (inline && !inline.startsWith("id=")) itemName = inline;
+      }
+
+      // Fallback: ilevel= field (very old SimC versions)
+      if (!ilvl) {
+        const m2 = val.match(/ilevel=(\d+)/);
+        if (m2) ilvl = parseInt(m2[1]);
+      }
+
+      if (ilvl) ilvls.push(ilvl);
+      const hasEnchant = val.includes("enchant_id=") || val.includes("enchant=");
+      const hasGem     = val.includes("gem_id=") || val.includes(",gem");
+      const bonusIds   = (val.match(/bonus_id=([\d/]+)/) || [])[1] || "";
+
+      if (itemName || ilvl) {
+        found[slotKey] = { key: slotKey, name: itemName || slotKey, ilvl, hasEnchant, hasGem, bonusIds };
       }
     }
+
     const gear = GEAR_SLOTS.map(s => { const h = found[s.key]; return h ? { ...s, name: h.name, ilvl: h.ilvl } : { ...s, name: "", ilvl: null }; });
     const filled = gear.filter(g => g.name && g.name.length > 1);
     if (!filled.length) return null;
