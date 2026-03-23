@@ -525,8 +525,40 @@ function FlagButton({ content, spec, cls }) {
     }}
     onMouseEnter={e => e.currentTarget.style.color = T.red}
     onMouseLeave={e => e.currentTarget.style.color = T.textDim}
-    title="Flag incorrect advice">
-      ⚑ FLAG
+    title="Report incorrect advice">
+      Wrong advice?
+    </button>
+  );
+}
+
+function ShareButton({ text, label }) {
+  const [state, setState] = useState("idle"); // idle | copied | error
+
+  const share = async () => {
+    const shareText = `Vaultwright gear analysis — ${label}\n\n${text.slice(0, 800)}${text.length > 800 ? "…" : ""}\n\ngearchecker-ucm7.vercel.app`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Vaultwright — ${label}`, text: shareText });
+        setState("copied");
+      } catch { /* user cancelled */ }
+    } else {
+      navigator.clipboard?.writeText(shareText).then(() => {
+        setState("copied");
+        setTimeout(() => setState("idle"), 2500);
+      }).catch(() => setState("error"));
+    }
+  };
+
+  return (
+    <button onClick={share} style={{
+      background: state === "copied" ? `${T.green}20` : "rgba(255,255,255,0.04)",
+      border: `1px solid ${state === "copied" ? T.green : T.border}`,
+      borderRadius: 8, padding: "5px 10px", cursor: "pointer",
+      color: state === "copied" ? T.green : T.textSub, fontSize: 11,
+      fontFamily: "'Cinzel', serif", letterSpacing: 1, transition: "all 0.2s",
+      WebkitTapHighlightColor: "transparent",
+    }}>
+      {state === "copied" ? "✓ SHARED" : "↑ SHARE"}
     </button>
   );
 }
@@ -1058,7 +1090,7 @@ Rules:
   };
 
   const sendInitial = async () => {
-    setLoading(true); setStep(1); setOracleMode("problem");
+    setLoading(true); setStep(2); setOracleMode("problem");
     setDailyCount(incrementRate());
     const contentCtx = contentFocus === "M+" ? "Mythic+ (10-15 key range)" : contentFocus === "Raid" ? "Heroic/early Mythic raid" : "mix of M+ and Raid";
     const msg = `I'm a ${activeSpec} ${activeClass} doing ${contentCtx}. I feel stuck and don't know what's actually holding me back.
@@ -1078,6 +1110,16 @@ Give me a rough benchmark: where should a ${activeSpec} ${activeClass} doing ${c
     try {
       const text = await callClaude(sysPrompt(), [{ role: "user", content: msg }]);
       setChatHistory([{ role: "user", content: msg, display: "Gear Analysis" }, { role: "assistant", content: text }]);
+      // Extract benchmark note from "Where I Stand" section for session bar
+      const standMatch = text.match(/##\s*Where I Stand[\s\S]*?(?=##|$)/i);
+      if (standMatch) {
+        // Pull first sentence/bullet after the header — strip markdown
+        const raw = standMatch[0].replace(/##[^
+]*/,"").trim();
+        const first = raw.split(/
+/).find(l => l.trim().length > 10);
+        if (first) setBenchmarkNote(first.replace(/^[-*•]\s*/, "").replace(/\*\*/g, "").slice(0, 120));
+      }
     } catch (e) {
       setChatHistory([{ role: "user", content: msg, display: "Gear Analysis" }, { role: "assistant", content: `Error: ${e.message}` }]);
     }
@@ -1309,7 +1351,7 @@ Where am I actually equal to or ahead of my friend?`;
                       )}
                       <GearPreviewGrid gear={detectedGear} />
                       <div style={{ marginTop: 16 }}>
-                        <button style={{ ...S.primaryBtn, width: "100%" }} onClick={() => setStep(2)}>Looks right — continue →</button>
+                        <button style={{ ...S.primaryBtn, width: "100%" }} onClick={sendInitial}>Find My Problem →</button>
                       </div>
                     </>
                   )}
@@ -1405,8 +1447,8 @@ Where am I actually equal to or ahead of my friend?`;
 
 
 
-          {/* ══ Step 1: Oracle ══ */}
-          {step === 1 && (
+          {/* ══ Step 2: Oracle ══ */}
+          {step === 2 && (
             <div className="fu">
               {/* Session bar */}
               <div style={{ ...S.card, padding: "14px 18px", marginBottom: 12, borderRadius: 14 }}>
@@ -1453,7 +1495,9 @@ Where am I actually equal to or ahead of my friend?`;
                     <div style={{ padding: "8px 0" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                         <span style={{ fontSize: 16, animation: "runespin 2s linear infinite", display: "inline-block" }}>᛫</span>
-                        <p style={{ color: T.gold, fontSize: 12, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, margin: 0, fontWeight: 700 }}>VAULTWRIGHT IS THINKING…</p>
+                        <p style={{ color: T.gold, fontSize: 12, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, margin: 0, fontWeight: 700 }}>
+                          DIAGNOSING YOUR {((activeSpec || "") + " " + (activeClass || "")).trim().toUpperCase() || "CHARACTER"}…
+                        </p>
                       </div>
                       <SkeletonBlock lines={8} />
                     </div>
@@ -1470,9 +1514,13 @@ Where am I actually equal to or ahead of my friend?`;
                             : msg.content.startsWith("Error:") ? (
                               <div>
                                 <p style={{ color: T.red, fontSize: 14, margin: "0 0 10px" }}>{msg.content}</p>
-                                <button style={{ ...S.ghostBtn, fontSize: 13, padding: "8px 16px", minHeight: 36, color: T.gold, borderColor: T.gold }} onClick={sendInitial}>Try again</button>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <button style={{ ...S.ghostBtn, fontSize: 13, padding: "8px 16px", minHeight: 36, color: T.gold, borderColor: T.gold }}
+                                    onClick={i === 1 ? sendInitial : sendFollowUp}>Try again</button>
+                                  <button style={{ ...S.ghostBtn, fontSize: 13, padding: "8px 16px", minHeight: 36 }} onClick={reset}>Start over</button>
+                                </div>
                               </div>
-                            ) : <ResponseBlock content={msg.content} />}
+                            ) : <ResponseBlock content={msg.content} showCopy={i > 0} spec={activeSpec} cls={activeClass} />}
                         </div>
                       ))}
                       {loading && (
@@ -1586,9 +1634,23 @@ Where am I actually equal to or ahead of my friend?`;
               {oracleMode === "compare" && (
                 <div style={S.card}>
                   <p style={{ color: T.text, fontSize: 15, fontWeight: 600, margin: "0 0 6px" }}>Compare to a friend</p>
-                  <p style={{ color: T.textSub, fontSize: 13, margin: "0 0 16px", lineHeight: 1.5 }}>
+                  <p style={{ color: T.textSub, fontSize: 13, margin: "0 0 12px", lineHeight: 1.5 }}>
                     Paste their Raider.IO URL and Vaultwright will show you exactly where the gap is — gear, stats, or something else.
                   </p>
+                  {!chatHistory.some(m => m.display?.startsWith("Compare")) && (
+                    <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+                      <p style={{ color: T.textDim, fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1, margin: "0 0 8px", fontWeight: 700 }}>EXAMPLE OUTPUT</p>
+                      <p style={{ color: T.textSub, fontSize: 13, margin: "0 0 6px", lineHeight: 1.5 }}>
+                        <strong style={{ color: T.text }}>The Gap:</strong> Your friend is 8 ilvls ahead in weapon (285 vs 272) and has Arcane Mastery on both rings. That's roughly 4% damage.
+                      </p>
+                      <p style={{ color: T.textSub, fontSize: 13, margin: "0 0 6px", lineHeight: 1.5 }}>
+                        <strong style={{ color: T.text }}>What To Focus On:</strong> Your weapon is the single biggest lever. Two more M+ clears gets you a vault shot at 278+.
+                      </p>
+                      <p style={{ color: T.textSub, fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+                        <strong style={{ color: T.text }}>Already Fine:</strong> Your embellishments and tier set are actually better than theirs.
+                      </p>
+                    </div>
+                  )}
                   <input style={S.input} placeholder="raider.io/characters/us/realm/friend"
                     value={friendUrl} onChange={e => setFriendUrl(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && sendCompare()} />
@@ -1614,7 +1676,10 @@ Where am I actually equal to or ahead of my friend?`;
                     if (!resp || resp.role !== "assistant") return null;
                     return (
                       <div key={i} style={{ ...S.chatMsg("assistant"), marginTop: 14 }}>
-                        <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, marginBottom: 8, color: T.textDim, fontWeight: 700 }}>VAULTWRIGHT — COMPARISON</p>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                          <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, margin: 0, color: T.textDim, fontWeight: 700 }}>VAULTWRIGHT — COMPARISON</p>
+                          <ShareButton text={resp.content} label={`${activeSpec} ${activeClass} vs ${friendData?.name || "friend"}`} />
+                        </div>
                         <ResponseBlock content={resp.content} showCopy={true} spec={activeSpec} cls={activeClass} />
                       </div>
                     );
@@ -1625,9 +1690,12 @@ Where am I actually equal to or ahead of my friend?`;
           )}
 
           {/* Footer */}
-          <div style={{ textAlign: "center", marginTop: 32, paddingBottom: 8 }}>
-            <p style={{ color: T.textDim, fontSize: 10, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, margin: 0 }}>
-              KNOWLEDGE BASE · {KNOWLEDGE_VERSION} · {KNOWLEDGE_DATE}
+          <div style={{ textAlign: "center", marginTop: 32, paddingBottom: 16 }}>
+            <p style={{ color: T.textDim, fontSize: 10, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, margin: "0 0 4px" }}>
+              KNOWLEDGE BASE · {KNOWLEDGE_VERSION} · Updated {KNOWLEDGE_DATE}
+            </p>
+            <p style={{ color: T.textDim, fontSize: 10, margin: 0, letterSpacing: 1 }}>
+              Spec data sourced from Icy Veins & Method.gg · Not affiliated with Blizzard Entertainment
             </p>
           </div>
 
