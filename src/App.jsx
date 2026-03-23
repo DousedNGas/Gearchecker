@@ -151,6 +151,12 @@ const WOW_REALMS = {
 // Per-spec knowledge injected conditionally into the prompt.
 // Only the player's spec is sent — never all 40 at once.
 
+// Patch info kept separate so it's easy to bump without touching spec knowledge
+const PATCH_CONTEXT = `CURRENT PATCH: World of Warcraft Midnight Season 1, patch 12.0.5 (March 2026).
+If the player asks about anything that may have changed in a recent hotfix or patch, you MUST use web_search to verify before answering. Do not guess. Recent tuning changes, embellishment nerfs, and stat weight shifts happen frequently.
+When you use web_search, prefer sources: icy-veins.com, method.gg, wowhead.com, class Discord resources.
+After searching, clearly state if advice differs from the player's spec knowledge block below.`;
+
 const UNIVERSAL_KNOWLEDGE = `
 == MIDNIGHT SEASON 1 — UNIVERSAL RULES ==
 GEAR TRACKS: Unranked 207-217 | Adventurer 220-230 | Veteran 233-243 | Champion 246-256 | Hero 259-269 | Myth 272-289 (max)
@@ -457,12 +463,81 @@ function CopyButton({ text }) {
   );
 }
 
-function ResponseBlock({ content, showCopy = false }) {
+// Flag button — lets players report wrong advice to Discord webhook
+function FlagButton({ content, spec, cls }) {
+  const [state, setState] = useState("idle"); // idle | open | sending | done | error
+  const [reason, setReason] = useState("");
+
+  const send = async () => {
+    if (!reason.trim()) return;
+    setState("sending");
+    try {
+      const res = await fetch("/api/flag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spec, cls, advice: content, reason: reason.trim(), patch: "12.0.5" }),
+      });
+      setState(res.ok ? "done" : "error");
+    } catch { setState("error"); }
+  };
+
+  if (state === "done") return (
+    <span style={{ fontSize: 11, color: T.green, fontFamily: "'Cinzel', serif", letterSpacing: 1 }}>
+      ✓ FLAGGED — thanks
+    </span>
+  );
+
+  if (state === "open" || state === "sending" || state === "error") return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+      <textarea
+        placeholder="What's wrong? (e.g. 'Crit is now better than Haste after 12.0.5 patch')"
+        value={reason}
+        onChange={e => setReason(e.target.value)}
+        rows={2}
+        style={{
+          width: "100%", minWidth: 220, background: T.surfaceHi, border: `1px solid ${T.border}`,
+          borderRadius: 8, padding: "7px 10px", color: T.text, fontSize: 13, resize: "none",
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      />
+      <div style={{ display: "flex", gap: 6 }}>
+        <button onClick={() => { setState("idle"); setReason(""); }} style={{
+          background: "transparent", border: `1px solid ${T.border}`, borderRadius: 8,
+          padding: "4px 10px", cursor: "pointer", color: T.textSub, fontSize: 11,
+        }}>Cancel</button>
+        <button onClick={send} disabled={state === "sending" || !reason.trim()} style={{
+          background: `${T.red}18`, border: `1px solid ${T.red}40`, borderRadius: 8,
+          padding: "4px 10px", cursor: "pointer", color: T.red, fontSize: 11,
+          fontFamily: "'Cinzel', serif", letterSpacing: 1, opacity: !reason.trim() ? 0.45 : 1,
+        }}>
+          {state === "sending" ? "SENDING…" : state === "error" ? "RETRY" : "SEND REPORT"}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <button onClick={() => setState("open")} style={{
+      background: "transparent", border: "none", cursor: "pointer",
+      color: T.textDim, fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1,
+      padding: "5px 6px", WebkitTapHighlightColor: "transparent",
+      transition: "color 0.2s",
+    }}
+    onMouseEnter={e => e.currentTarget.style.color = T.red}
+    onMouseLeave={e => e.currentTarget.style.color = T.textDim}
+    title="Flag incorrect advice">
+      ⚑ FLAG
+    </button>
+  );
+}
+
+function ResponseBlock({ content, showCopy = false, spec = "", cls = "" }) {
   if (!content) return null;
   return (
     <div>
       {showCopy && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <FlagButton content={content} spec={spec} cls={cls} />
           <CopyButton text={content} />
         </div>
       )}
@@ -873,23 +948,35 @@ export default function Vaultwright() {
     return "No gear data — give best general spec advice.";
   };
 
-  // sysPrompt returns an array of content blocks.
-  // Static knowledge blocks are marked cache_control so Anthropic re-uses cached tokens.
+  // sysPrompt: three blocks with different cache/volatility profiles.
+  // Block 1 (cached): stable spec knowledge — Apex Talent mechanics, rotation identity, Runeforge rules.
+  // Block 2 (cached): universal rules — gear tracks, Dawncrest math, embellishments.
+  //   → Both cached because they rarely change. Claude re-uses tokens across calls.
+  // Block 3 (uncached): volatile context — patch state, player gear, rules.
+  //   → Uncached because it changes every session. Web search handles the volatile consumable data.
   const sysPrompt = (compactGear = false) => {
     const gear = compactGear
       ? summarizeGearForPrompt(gearSummary, simcParsed, inputMode)
       : buildGearContext();
     return [
-      // Block 1: static knowledge — cached across all calls for this spec session
+      // Block 1 — STABLE (cached): spec-specific mechanics, rotation identity, Runeforge rules
       {
         type: "text",
-        text: `${UNIVERSAL_KNOWLEDGE}\n${getSpecKnowledge(activeSpec, activeClass)}`,
+        text: getSpecKnowledge(activeSpec, activeClass),
         cache_control: { type: "ephemeral" },
       },
-      // Block 2: dynamic context — player-specific, changes per session
+      // Block 2 — STABLE (cached): universal Season 1 systems knowledge
       {
         type: "text",
-        text: `You are Vaultwright — a sharp WoW gear advisor for Midnight Season 1. Give direct, specific, actionable advice. Explain the mechanical WHY behind every recommendation. Reference the player's actual gear items and ilvls when available.
+        text: UNIVERSAL_KNOWLEDGE,
+        cache_control: { type: "ephemeral" },
+      },
+      // Block 3 — VOLATILE (uncached): patch state + player context + rules
+      {
+        type: "text",
+        text: `${PATCH_CONTEXT}
+
+You are Vaultwright — a sharp WoW gear advisor for Midnight Season 1. Give direct, specific, actionable advice. Explain the mechanical WHY behind every recommendation. Reference the player's actual gear items and ilvls when available.
 
 Player: ${activeSpec || "Unknown Spec"} ${activeClass || "Unknown Class"}
 Content: ${content.join(", ") || "general play"}
@@ -898,14 +985,17 @@ Goal: ${priority}
 Gear:
 ${gear}
 
+VOLATILE ADVICE RULE: For gems, enchants, flasks, potions, and stat weights — these change with patches. Use web_search to verify current recommendations from icy-veins.com or method.gg before stating them as fact. If search confirms our knowledge, state it confidently. If search finds a discrepancy, lead with the current information and note the change.
+
 Rules:
 - Use ## for section headers, **bold** for key stats/items/numbers, bullet points (- ) for lists.
 - NEVER use markdown tables — write lists instead. Tables break on mobile.
-- Write for a newer player who may not know all WoW systems. Briefly explain acronyms (e.g. "Dawncrests — the upgrade currency").
+- Write for a newer player. Briefly explain acronyms (e.g. "Dawncrests — the upgrade currency").
 - Lead with the single most important recommendation, stated simply.
 - Name actual items from the player's gear, give exact ilvl numbers and Dawncrest costs.
 - Keep each section tight — 3-5 bullet points max. No walls of text.
-- Be direct. If something is wrong with their gear, say it plainly.`,
+- Be direct. If something is wrong with their gear, say it plainly.
+- End every response with a one-line "📖 Verify at: icy-veins.com/wow/[spec-slug]" link for the player's spec.`,
       },
     ];
   };
@@ -1295,7 +1385,7 @@ Rules:
                     return (
                       <div key={i} style={{ ...S.chatMsg("assistant"), marginTop: 14 }}>
                         <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, marginBottom: 8, color: T.textDim, fontWeight: 700 }}>VAULTWRIGHT</p>
-                        <ResponseBlock content={resp.content} showCopy={true} />
+                        <ResponseBlock content={resp.content} showCopy={true} spec={activeSpec} cls={activeClass} />
                       </div>
                     );
                   })}
@@ -1335,7 +1425,7 @@ Rules:
                     return (
                       <div key={i} style={{ ...S.chatMsg("assistant"), marginTop: 14 }}>
                         <p style={{ fontSize: 11, fontFamily: "'Cinzel', serif", letterSpacing: 1.5, marginBottom: 8, color: T.textDim, fontWeight: 700 }}>VAULTWRIGHT — WEEK PLAN</p>
-                        <ResponseBlock content={resp.content} showCopy={true} />
+                        <ResponseBlock content={resp.content} showCopy={true} spec={activeSpec} cls={activeClass} />
                       </div>
                     );
                   })}
