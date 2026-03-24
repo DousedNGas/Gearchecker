@@ -37,15 +37,12 @@ const GEAR_SLOTS = [
   { key: "mainhand", label: "Main Hand" }, { key: "offhand", label: "Off Hand" },
 ];
 
-
-
 // ── Design tokens ────────────────────────────────────────────────
 const T = {
   bg:        "#080c12",
   surface:   "#0f1520",
   surfaceHi: "#162030",
   border:    "#1e2d42",
-  borderHi:  "#c8973a",
   gold:      "#c8973a",
   goldBright:"#e8b84b",
   text:      "#e8ecf2",
@@ -69,7 +66,6 @@ const S = {
   tag: sel => ({ background: sel ? `rgba(200,151,58,0.12)` : "rgba(255,255,255,0.02)", border: `1px solid ${sel ? T.gold : T.border}`, borderRadius: 24, padding: "10px 18px", cursor: "pointer", color: sel ? T.goldBright : T.textSub, fontSize: 13, fontFamily: "inherit", transition: "all 0.15s", minHeight: 44, WebkitTapHighlightColor: "transparent" }),
   chatMsg: role => ({ marginBottom: 10, padding: "16px 18px", borderRadius: 14, background: role === "user" ? `rgba(200,151,58,0.06)` : T.surface, border: `1px solid ${role === "user" ? `${T.gold}25` : T.border}`, borderLeft: `3px solid ${role === "user" ? T.goldBright : T.purple}`, boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }),
 };
-
 
 // ── Knowledge base ──────────────────────────────────────────────
 // Per-spec knowledge injected conditionally into the prompt.
@@ -566,22 +562,6 @@ function ResponseBlock({ content, showCopy = false, spec = "", cls = "" }) {
   );
 }
 
-// ── Step breadcrumb
-function Breadcrumb({ steps, current }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 20, overflowX: "auto", paddingBottom: 2 }}>
-      {steps.map((s, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-          <span style={{ fontSize: 12, fontFamily: "'Cinzel', serif", color: i < current ? T.green : i === current ? T.gold : T.textDim, fontWeight: i === current ? 700 : 400 }}>
-            {i < current ? "✓ " : ""}{s}
-          </span>
-          {i < steps.length - 1 && <span style={{ color: T.textDim, fontSize: 10 }}>›</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ── Gear preview grid
 function GearPreviewGrid({ gear }) {
   const filled = gear.filter(g => g.name);
@@ -646,6 +626,13 @@ function getTodayCount() {
 
 const toRealmSlug = n => n.trim().toLowerCase().replace(/\s+/g, "-").replace(/'/g, "").replace(/[^a-z0-9-]/g, "");
 
+// Parses raider.io/characters/us/realm/name URLs (or us/realm/name shorthand)
+const parseRioUrl = (url) => {
+  const m = url.trim().match(/(?:raider\.io\/characters\/)?([a-z]{2})\/([^/]+)\/([^/?#]+)/i);
+  if (!m) return null;
+  return { region: m[1].toLowerCase(), realm: m[2], name: m[3] };
+};
+
 // ── Main App ─────────────────────────────────────────────────────
 // ── Mode card (no emoji) ─────────────────────────────────────────
 function ModeCard({ icon: Icon, title, badge, badgeColor = T.gold, description, selected, onClick }) {
@@ -668,7 +655,7 @@ function ModeCard({ icon: Icon, title, badge, badgeColor = T.gold, description, 
           <p style={{ color: T.textSub, fontSize: 13, margin: 0, lineHeight: 1.4 }}>{description}</p>
         </div>
         <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: `2px solid ${selected ? badgeColor : T.border}`, background: selected ? badgeColor : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {selected && <span style={{ color: "#0d1117", fontSize: 10, fontWeight: 900, lineHeight: 1 }}>✓</span>}
+          {selected && <span style={{ color: T.bg, fontSize: 10, fontWeight: 900, lineHeight: 1 }}>✓</span>}
         </div>
       </div>
     </button>
@@ -817,9 +804,8 @@ export default function Vaultwright() {
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
-  // Aliases kept for readability throughout render
-  const activeClass = detectedClass;
-  const activeSpec  = detectedSpec;
+  const activeClass = detectedClass;  // alias — same as detectedClass
+  const activeSpec  = detectedSpec;   // alias — same as detectedSpec
   const classData   = CLASSES.find(c => c.name === activeClass);
 
   // SimC parser
@@ -892,12 +878,9 @@ export default function Vaultwright() {
       }
 
       if (ilvl) ilvls.push(ilvl);
-      const hasEnchant = val.includes("enchant_id=") || val.includes("enchant=");
-      const hasGem     = val.includes("gem_id=") || val.includes(",gem");
-      const bonusIds   = (val.match(/bonus_id=([\d/]+)/) || [])[1] || "";
 
       if (itemName || ilvl) {
-        found[slotKey] = { key: slotKey, name: itemName || slotKey, ilvl, hasEnchant, hasGem, bonusIds };
+        found[slotKey] = { key: slotKey, name: itemName || slotKey, ilvl };
       }
     }
 
@@ -920,14 +903,6 @@ export default function Vaultwright() {
     return () => clearTimeout(timer);
   }, [simcString, inputMode, parseSimC]);
 
-  // Raider.IO fetch — parses raider.io/characters/us/realm/name URLs
-  const parseRioUrl = (url) => {
-    // Accept full URL or just "us/realm/name" shorthand
-    const m = url.trim().match(/(?:raider\.io\/characters\/)?([a-z]{2})\/([^/]+)\/([^/?#]+)/i);
-    if (!m) return null;
-    return { region: m[1].toLowerCase(), realm: m[2], name: m[3] };
-  };
-
   const fetchRaiderIO = async () => {
     const parsed = parseRioUrl(rioUrl);
     if (!parsed) { setRioError("Paste your Raider.IO profile URL — e.g. raider.io/characters/us/stormrage/Arthas"); return; }
@@ -948,7 +923,8 @@ export default function Vaultwright() {
       const gearArray = GEAR_SLOTS.map(slot => { const item = items[slot.key]; return { ...slot, name: item?.name || "", ilvl: item?.item_level || null }; });
       setDetectedGear(gearArray);
       const filled = gearArray.filter(g => g.name);
-      const avg = filled.filter(g=>g.ilvl).length ? Math.round(filled.filter(g=>g.ilvl).reduce((a,g)=>a+g.ilvl,0)/filled.filter(g=>g.ilvl).length) : 0;
+      const filledWithIlvl = filled.filter(g => g.ilvl);
+      const avg = filledWithIlvl.length ? Math.round(filledWithIlvl.reduce((a,g)=>a+g.ilvl,0)/filledWithIlvl.length) : 0;
       setGearSummary(`Character: ${data.name} (${data.class} — ${data.active_spec_name}), avg ilvl ${avg}.\nEquipped gear:\n` + filled.map(g=>`${g.label}: ${g.name}${g.ilvl?` (ilvl ${g.ilvl})`:""}`).join("\n"));
     } catch (e) { setRioError(e.message || "Fetch failed. Check name, realm and region."); }
     setRioLoading(false);
@@ -1071,7 +1047,7 @@ Give me a rough benchmark: where should a ${activeSpec} ${activeClass} doing ${c
       // Extract benchmark note from "Where I Stand" section for session bar
       const standIdx = text.indexOf("## Where I Stand");
       if (standIdx !== -1) {
-        const afterHeader = text.slice(standIdx + 18);
+        const afterHeader = text.slice(standIdx + "## Where I Stand".length);
         const nextSection = afterHeader.indexOf("##");
         const section = (nextSection === -1 ? afterHeader : afterHeader.slice(0, nextSection)).trim();
         const firstLine = section.split("\n").find(l => l.trim().length > 10);
@@ -1372,9 +1348,11 @@ Where am I actually equal to or ahead of my friend?`;
                       </button>
                     </>
                   )}
-                  <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
-                    <button style={S.ghostBtn} onClick={sendInitial}>Skip — paste URL later</button>
-                  </div>
+                  {!wclData && (
+                    <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+                      <button style={S.ghostBtn} onClick={sendInitial}>Skip — paste URL later</button>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -1419,8 +1397,6 @@ Where am I actually equal to or ahead of my friend?`;
               )}
             </div>
           )}
-
-
 
           {/* ══ Step 2: Oracle ══ */}
           {step === 2 && (
@@ -1491,7 +1467,7 @@ Where am I actually equal to or ahead of my friend?`;
                                 <p style={{ color: T.red, fontSize: 14, margin: "0 0 10px" }}>{msg.content}</p>
                                 <div style={{ display: "flex", gap: 8 }}>
                                   <button style={{ ...S.ghostBtn, fontSize: 13, padding: "8px 16px", minHeight: 36, color: T.gold, borderColor: T.gold }}
-                                    onClick={i === 1 ? sendInitial : sendFollowUp}>Try again</button>
+                                    onClick={msg.display === "Gear Analysis" || i === 1 ? sendInitial : sendFollowUp}>Try again</button>
                                   <button style={{ ...S.ghostBtn, fontSize: 13, padding: "8px 16px", minHeight: 36 }} onClick={reset}>Start over</button>
                                 </div>
                               </div>
@@ -1545,8 +1521,8 @@ Where am I actually equal to or ahead of my friend?`;
                       ))}
                     </div>
                   ))}
-                  <button style={{ ...S.primaryBtn, width: "100%", marginTop: 8, opacity: vaultItems.filter(v=>v.trim()).length < 1 || loading ? 0.45 : 1 }}
-                    onClick={sendVaultAnalysis} disabled={vaultItems.filter(v=>v.trim()).length < 1 || loading}>
+                  <button style={{ ...S.primaryBtn, width: "100%", marginTop: 8, opacity: vaultItems.some(v=>v.trim()) && !loading ? 1 : 0.45 }}
+                    onClick={sendVaultAnalysis} disabled={!vaultItems.some(v=>v.trim()) || loading}>
                     {loading
                       ? <span style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}><Loader2 size={16} style={{animation:"spin 1s linear infinite"}} />Analysing...</span>
                       : "Which should I pick?"}
