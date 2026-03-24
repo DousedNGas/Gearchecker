@@ -7,7 +7,7 @@ import {
   Link2, FileText, ChevronLeft, Sword, Trophy, Calendar,
   Loader2, AlertCircle, CheckCircle2, BarChart3,
 } from "lucide-react";
-import { SPEC_KNOWLEDGE, getSpecKnowledge, KNOWLEDGE_VERSION, KNOWLEDGE_DATE } from './specKnowledge.js';
+import { getSpecKnowledge, KNOWLEDGE_VERSION, KNOWLEDGE_DATE } from './specKnowledge.js';
 
 // ── Design tokens & static data ─────────────────────────────────
 const CLASSES = [
@@ -37,18 +37,7 @@ const GEAR_SLOTS = [
   { key: "mainhand", label: "Main Hand" }, { key: "offhand", label: "Off Hand" },
 ];
 
-const REGIONS = ["us", "eu", "kr", "tw"];
 
-const CONTENT_TYPES = [
-  "Mythic+ Dungeons", "Raid (Normal/Heroic)", "Raid (Mythic)",
-  "Bountiful Delves", "Prey (Hard/Nightmare)", "PvP", "World Content",
-];
-
-const PRIORITIES = [
-  "Maximize DPS", "Maximize Survivability", "Balance Both", "Support/Utility",
-];
-
-const STEPS = ["Input Method", "Your Gear", "Configure", "Oracle"];
 
 // ── Design tokens ────────────────────────────────────────────────
 const T = {
@@ -81,71 +70,6 @@ const S = {
   chatMsg: role => ({ marginBottom: 10, padding: "16px 18px", borderRadius: 14, background: role === "user" ? `rgba(200,151,58,0.06)` : T.surface, border: `1px solid ${role === "user" ? `${T.gold}25` : T.border}`, borderLeft: `3px solid ${role === "user" ? T.goldBright : T.purple}`, boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }),
 };
 
-// ── Realm list ───────────────────────────────────────────────────
-const WOW_REALMS = {
-  us: [
-    "Aegwynn","Aerie Peak","Agamaggan","Aggramar","Alexstrasza","Alleria","Altar of Storms",
-    "Alterac Mountains","Aman'Thul","Anetheron","Antonidas","Anub'arak","Anvilmar","Arathor",
-    "Archimonde","Area 52","Argent Dawn","Arygos","Azgalor","Azjol-Nerub","Azralon","Azuremyst",
-    "Baelgun","Barthilas","Black Dragonflight","Blackhand","Blackrock","Blackwater Raiders",
-    "Blackwing Lair","Bladefist","Blade's Edge","Bleeding Hollow","Blood Furnace","Bloodhoof",
-    "Bloodscalp","Bonechewer","Borean Tundra","Boulderfist","Bronzebeard","Burning Blade",
-    "Burning Legion","Caelestrasz","Cairne","Cenarion Circle","Cenarion Expedition","Cenarius",
-    "Cho'gall","Chromaggus","Coilfang","Crushridge","Daggerspine","Dalaran","Dalvengyr",
-    "Dark Iron","Darkspear","Darrowmere","Dath'Remar","Dawnbringer","Deathwing","Demon Soul",
-    "Dentarg","Destromath","Dethecus","Detheroc","Doomhammer","Draenor","Dragonblight",
-    "Dragonmaw","Drak'Tharon","Drak'thul","Draka","Drenden","Dunemaul","Durotan","Duskwood",
-    "Earthen Ring","Echo Isles","Eitrigg","Eldre'Thalas","Elune","Emerald Dream","Eonar",
-    "Eredar","Executus","Exodar","Farstriders","Feathermoon","Fenris","Firetree","Fizzcrank",
-    "Frostmane","Frostmourne","Frostwolf","Galakrond","Garithos","Garona","Garrosh","Ghostlands",
-    "Gilneas","Gnomeregan","Goldrinn","Gordunni","Gorefiend","Greymane","Grizzly Hills","Gul'dan",
-    "Gundrak","Gurubashi","Hakkar","Haomarush","Hellscream","Hydraxis","Hyjal","Icecrown",
-    "Illidan","Jaedenar","Kalecgos","Kargath","Kel'Thuzad","Khadgar","Khaz Modan","Khaz'goroth",
-    "Kil'jaeden","Kilrogg","Kirin Tor","Korgath","Korialstrasz","Kul Tiras","Laughing Skull",
-    "Legionfall","Lightbringer","Lightning's Blade","Lightninghoof","Llane","Loremaster",
-    "Lothar","Madoran","Maelstrom","Magtheridon","Maiev","Mal'Ganis","Malfurion","Malorne",
-    "Malygos","Mannoroth","Medivh","Misha","Mok'Nathal","Moon Guard","Moonrunner","Muradin",
-    "Nagrand","Nathrezim","Nazgrel","Nazjatar","Nemesis","Ner'zhul","Norgannon","Onyxia",
-    "Perenolde","Proudmoore","Quel'dorei","Quel'Thalas","Ravencrest","Ravenholdt","Rexxar",
-    "Rivendare","Runetotem","Sargeras","Saurfang","Scarlet Crusade","Sen'jin","Sentinels",
-    "Shadow Council","Shadowmoon","Shadowsong","Shattered Hand","Shattered Halls","Silver Hand",
-    "Silvermoon","Sisters of Elune","Skullcrusher","Skywall","Smolderthorn","Spinebreaker",
-    "Spirestone","Staghelm","Steamwheedle Cartel","Stonemaul","Stormrage","Stormreaver",
-    "Stormscale","Suramar","Tanaris","Terenas","Terokkar","Thaurissan","The Forgotten Coast",
-    "The Scryers","The Underbog","The Venture Co","Thorium Brotherhood","Thrall","Thunderhorn",
-    "Thunderlord","Tichondrius","Tol Barad","Trollbane","Turalyon","Twisting Nether","Tyrande",
-    "Uldaman","Uldum","Undermine","Ursin","Uther","Vashj","Vek'nilash","Velen","Whisperwind",
-    "Wildhammer","Windrunner","Winterhoof","Wyrmrest Accord","Ysera","Ysondre","Zangarmarsh",
-    "Zuluhed",
-  ],
-  eu: [
-    "Aegwynn","Aerie Peak","Agamaggan","Aggramar","Alexstrasza","Alleria","Alonsus","Al'Akir",
-    "Ambossar","Anachronos","Anetheron","Antonidas","Anub'arak","Arathor","Archimonde",
-    "Area 52","Argent Dawn","Aszune","Auchindoun","Azjol-Nerub","Azuremyst","Baelgun",
-    "Balnazzar","Black Dragonflight","Blackhand","Blackmoore","Blackrock","Bladefist",
-    "Blade's Edge","Bleeding Hollow","Blood Furnace","Bloodfeather","Bloodhoof","Bloodscalp",
-    "Boulderfist","Bronze Dragonflight","Bronzebeard","Burning Blade","Burning Legion",
-    "Burning Steppes","Chamber of Aspects","Chromaggus","Crushridge","Daggerspine","Darkmoon Faire",
-    "Darksorrow","Darkspear","Dawnbringer","Deathwing","Defias Brotherhood","Dentarg","Der Rat von Dalaran",
-    "Die Aldor","Die ewige Wacht","Die Nachtwache","Die silberne Hand","Draenor","Dragonblight",
-    "Dragonmaw","Drak'thul","Draka","Dun Modr","Dun Morogh","Dunemaul","Durotan","Earthen Ring",
-    "Echo Isles","Eitrigg","Eldre'Thalas","Emerald Dream","Eredar","Executus","Exodar","Festung der Stürme",
-    "Fordragon","Frostmane","Frostwhisper","Frostwolf","Ghostlands","Gilneas","Grim Batol",
-    "Gul'dan","Hellfire","Hellscream","Howling Fjord","Hyjal","Kael'thas","Kargath","Kel'Thuzad",
-    "Khadgar","Khaz Modan","Kil'jaeden","Kilrogg","Kirin Tor","Korgath","Lightbringer","Lightning's Blade",
-    "Lordaeron","Los Errantes","Magtheridon","Mal'Ganis","Malfurion","Mazrigos","Medivh","Minahonda",
-    "Moonglade","Nagrand","Nathrezim","Nazjatar","Nefarian","Nemesis","Ner'zhul","Nordrassil",
-    "Norgannon","Outland","Perenolde","Proudmoore","Quel'Thalas","Ragnaros","Ravencrest","Ravenholdt",
-    "Rexxar","Runetotem","Sargeras","Shadowmoon","Shadowsong","Shattered Hand","Shattered Halls",
-    "Silvermoon","Skullcrusher","Skywall","Spinebreaker","Sporeggar","Steamwheedle Cartel",
-    "Stonemaul","Stormrage","Stormreaver","Stormscale","Sunstrider","Sylvanas","Talnivarr",
-    "Tarren Mill","Terenas","Terokkar","The Maelstrom","The Sha'tar","The Venture Co","Thunderhorn",
-    "Tichondrius","Tirion","Trollbane","Turalyon","Twilight's Hammer","Twisting Nether","Tyrande",
-    "Uldaman","Vashj","Vek'lor","Vek'nilash","Wrathbringer","Xavius","Ysera","Zenedar","Zuluhed",
-  ],
-  kr: ["Azshara","Burning Legion","Cenarius","Durotan","Executus","Hellscream","Hyjal","Norgannon","Stormrage","Windrunner"],
-  tw: ["Arthas","Arygos","Bleeding Hollow","Chillwind Point","Crystalpine Stinger","Demon Fall Canyon","Demon Soul","Dragonmaw","Draka","Frostmane","Hellscream","Icecrown","Light's Hope","Nightmare","Order of the Cloud Serpent","Shadowmoon","Skywall","Stormrage","Sundown Marsh","Wrathbringer"],
-};
 
 // ── Knowledge base ──────────────────────────────────────────────
 // Per-spec knowledge injected conditionally into the prompt.
@@ -618,8 +542,8 @@ function ResponseBlock({ content, showCopy = false, spec = "", cls = "" }) {
             out.push(<h3 key={i} style={{ color: T.gold, fontSize: 14, fontFamily: "'Cinzel', serif", fontWeight: 700, marginTop: 18, marginBottom: 6, letterSpacing: 0.5 }}>{line.replace(/^#+\s*/, "")}</h3>);
           } else if (line.startsWith("- ") || line.startsWith("• ")) {
             const raw = line.replace(/^[-•]\s*/, "");
-          const safe = raw.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-          const html = safe.replace(/\*\*(.+?)\*\*/g, `<strong style="color:${T.text}">$1</strong>`);
+            const safe = raw.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+            const html = safe.replace(/\*\*(.+?)\*\*/g, `<strong style="color:${T.text}">$1</strong>`);
             out.push(
               <div key={i} style={{ display:"flex", gap:10, margin:"5px 0", paddingLeft:4 }}>
                 <span style={{ color:T.gold, flexShrink:0, marginTop:6, fontSize:6 }}>◆</span>
@@ -629,7 +553,8 @@ function ResponseBlock({ content, showCopy = false, spec = "", cls = "" }) {
           } else if (line.match(/^---+$/)) {
             out.push(<hr key={i} style={{ border:"none", borderTop:`1px solid ${T.border}`, margin:"14px 0" }} />);
           } else {
-            const html = line.replace(/\*\*(.+?)\*\*/g, `<strong style="color:${T.text}">$1</strong>`);
+            const safeLine = line.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+            const html = safeLine.replace(/\*\*(.+?)\*\*/g, `<strong style="color:${T.text}">$1</strong>`);
             out.push(<p key={i} style={{ color:"#c9d1d9", fontSize:14, margin:"6px 0", lineHeight:1.7 }} dangerouslySetInnerHTML={{ __html: html }} />);
           }
           i++;
@@ -726,7 +651,7 @@ const toRealmSlug = n => n.trim().toLowerCase().replace(/\s+/g, "-").replace(/'/
 function ModeCard({ icon: Icon, title, badge, badgeColor = T.gold, description, selected, onClick }) {
   return (
     <button onClick={onClick} style={{
-      background: selected ? `${badgeColor}12` : "#0d1117",
+      background: selected ? `${badgeColor}12` : T.bg,
       border: `1.5px solid ${selected ? badgeColor : T.border}`,
       borderRadius: 12, padding: 16, cursor: "pointer", textAlign: "left",
       transition: "all 0.15s", width: "100%", WebkitTapHighlightColor: "transparent", minHeight: 72,
@@ -866,7 +791,7 @@ export default function Vaultwright() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const [oracleMode,      setOracleMode]      = useState("analysis");
+  const [oracleMode,      setOracleMode]      = useState("problem");
   const [vaultItems,      setVaultItems]      = useState(["","","",  "","","",  "","",""]);  // 9 slots: 3 dungeon, 3 raid, 3 world
   const [sparksAvailable, setSparksAvailable] = useState("1");
   const [heroCrestsAvail, setHeroCrestsAvail] = useState("");
@@ -890,7 +815,7 @@ export default function Vaultwright() {
     document.head.appendChild(s);
   }, []);
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory, loading]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
   // Aliases kept for readability throughout render
   const activeClass = detectedClass;
@@ -1237,7 +1162,7 @@ Where am I actually equal to or ahead of my friend?`;
   const sendWeeklyPlan = async () => {
     setLoading(true);
     setDailyCount(incrementRate());
-    const msg = `Generate my weekly Vaultwright plan as a ${activeSpec} ${activeClass}.\n\nGoal: ${priority}\nContent: ${content.join(", ") || "general"}\nSparks: ${sparksAvailable} | Hero Crests: ${heroCrestsAvail||"unknown"} | Myth Crests: ${mythCrestsAvail||"unknown"}\n\nGear:\n${buildGearContext()}\n\n## Upgrades This Reset\nWhich slots, what track, exact Dawncrest cost. Flag any FREE upgrades.\n\n## Crafting Decision\nSpend Sparks this week? If yes: exactly what item, slot, Embellishment, and reagent.\n\n## Content Priority\nWhat to run and in what order. Which Prey difficulty and Delve tier to target.\n\n## Vault Setup\nWhat to complete before reset to maximise next week's options.\n\n## Don't Forget\nFree upgrades, weekly quests for Sparks, reset-day actions.`;
+    const msg = `Generate my weekly Vaultwright plan as a ${activeSpec} ${activeClass}.\n\nContent focus: ${contentFocus || "general play"}\nSparks: ${sparksAvailable} | Hero Crests: ${heroCrestsAvail||"unknown"} | Myth Crests: ${mythCrestsAvail||"unknown"}\n\nGear:\n${buildGearContext()}\n\n## Upgrades This Reset\nWhich slots, what track, exact Dawncrest cost. Flag any FREE upgrades.\n\n## Crafting Decision\nSpend Sparks this week? If yes: exactly what item, slot, Embellishment, and reagent.\n\n## Content Priority\nWhat to run and in what order. Which Prey difficulty and Delve tier to target.\n\n## Vault Setup\nWhat to complete before reset to maximise next week's options.\n\n## Don't Forget\nFree upgrades, weekly quests for Sparks, reset-day actions.`;
     const hist = [...chatHistory, { role: "user", content: msg, display: "Weekly Plan" }];
     setChatHistory(hist);
     try {
@@ -1291,8 +1216,6 @@ Where am I actually equal to or ahead of my friend?`;
             <h1 style={{ fontSize: "clamp(32px,8vw,52px)", fontFamily: "'Cinzel Decorative', serif", background: `linear-gradient(135deg, ${T.goldBright} 0%, ${T.gold} 50%, #a87830 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", letterSpacing: 4, margin: "0 0 8px", lineHeight: 1.1 }}>VAULTWRIGHT</h1>
             <p style={{ color: T.textDim, fontSize: 11, margin: 0, letterSpacing: 3, fontFamily: "'Cinzel', serif" }}>MIDNIGHT GEAR ADVISOR</p>
           </div>
-
-          {false && <Breadcrumb steps={STEPS} current={step} />} {/* hidden — 2-step flow */}
 
           {/* ── DEV ONLY: skip input ── */}
           {import.meta.env.DEV && (
