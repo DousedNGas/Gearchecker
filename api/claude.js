@@ -1,8 +1,11 @@
-
 // api/claude.js
 // PAID_MODE=true → no rate limit
 // Default        → 5 req/IP/day
-// Web search enabled via Anthropic tool use — lets Claude look up current guides in real time
+//
+// ⚠ KNOWN LIMITATION: In-memory rate limiting does not work reliably on
+// Vercel serverless functions — each cold start gets a fresh Map.
+// For real enforcement, replace ipHits with Vercel KV or Upstash Redis.
+// The client-side dailyCount in localStorage is the actual user-facing limit.
 
 const ipHits = new Map();
 const DAILY_LIMIT = 5;
@@ -71,7 +74,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           model: "claude-haiku-4-5-20251001",
-          max_tokens: max_tokens || 2000, // slightly higher — web search responses need more room
+          max_tokens: max_tokens || 2000,
           system: system ?? "",
           messages: currentMessages,
           tools,
@@ -85,7 +88,7 @@ export default async function handler(req, res) {
         return res.status(response.status).json({ error: data.error?.message || "API error" });
       }
 
-      // If stop_reason is end_turn or no tool use, we're done
+      // If no tool use or stop_reason is end_turn, we're done
       const hasToolUse = data.content?.some(b => b.type === "tool_use");
       if (!hasToolUse || data.stop_reason === "end_turn") {
         finalText = extractFinalText(data.content);
@@ -109,7 +112,6 @@ export default async function handler(req, res) {
         { role: "user",      content: toolResults },
       ];
 
-      // If this is the last round, extract any text we have
       if (round === 3) {
         finalText = extractFinalText(data.content) || "Search completed — no text response generated.";
       }
