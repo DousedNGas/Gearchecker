@@ -2,7 +2,7 @@
 // VAULTWRIGHT — WoW Midnight Gear Advisor  |  "Know your next move."
 // ═══════════════════════════════════════════════════════════════
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Link2, FileText, ChevronLeft, Sword, Trophy, Calendar,
   Loader2, AlertCircle, CheckCircle2, BarChart3,
@@ -725,6 +725,25 @@ function WeeklyEmptyState() {
     </div>
   );
 }
+// ── Error boundary — prevents white screen on render crash
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div style={{ minHeight: "100vh", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ maxWidth: 400, textAlign: "center" }}>
+          <p style={{ color: T.gold, fontFamily: "'Cinzel', serif", fontSize: 13, letterSpacing: 2, marginBottom: 12 }}>SOMETHING WENT WRONG</p>
+          <p style={{ color: T.textSub, fontSize: 13, marginBottom: 20, lineHeight: 1.5 }}>{this.state.error?.message || "Unexpected error"}</p>
+          <button style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 20px", cursor: "pointer", color: T.text, fontSize: 14 }}
+            onClick={() => window.location.reload()}>Reload</button>
+        </div>
+      </div>
+    );
+  }
+}
+
 // ── Main App ─────────────────────────────────────────────────────
 export default function Vaultwright() {
   const [step, setStep]         = useState(0);
@@ -833,7 +852,7 @@ export default function Vaultwright() {
         const specMap = {
           beast_mastery:"Beast Mastery", beastmastery:"Beast Mastery",
           holy:"Holy", protection:"Protection", retribution:"Retribution",
-          blood:"Blood", frost:"Frost DK", unholy:"Unholy",
+          blood:"Blood", frost:"Frost", unholy:"Unholy",
           havoc:"Havoc", vengeance:"Vengeance", devourer:"Devourer",
           balance:"Balance", feral:"Feral", guardian:"Guardian", restoration:"Restoration",
           devastation:"Devastation", preservation:"Preservation", augmentation:"Augmentation",
@@ -960,14 +979,27 @@ export default function Vaultwright() {
     if (inputMode === "rio" && gearSummary) return gearSummary;
     if (inputMode === "simc" && simcParsed) return `SimC — ${simcParsed.filled} items${simcParsed.avgIlvl ? `, avg ${simcParsed.avgIlvl}` : ""}:\n` + simcParsed.gear.filter(g=>g.name).map(g=>`${g.label}: ${g.name}${g.ilvl?` (ilvl ${g.ilvl})`:""}`).join("\n");
     if (inputMode === "wcl" && wclData) {
-      if (wclData.placeholder) return `Warcraft Logs loaded (report: ${wclData.reportId}) — API key not yet configured. Give best general advice.`;
+      if (wclData.placeholder) return `Warcraft Logs loaded (report: ${wclData.reportId}) — API key not yet configured. Advise on spec mechanics and general gearing without specific gear data.`;
       const p = wclData.report?.player;
       const fights = wclData.report?.fights || [];
-      return [
+      const rankings = wclData.report?.rankings;
+      const ilvlFights = fights.filter(f => f.averageItemLevel);
+      const avgIlvl = ilvlFights.length
+        ? Math.round(ilvlFights.reduce((a, f) => a + f.averageItemLevel, 0) / ilvlFights.length)
+        : null;
+      const lines = [
         p ? `WCL Player: ${p.name} (${p.type} — ${p.specs?.[0]?.spec || "Unknown"})` : "WCL data loaded",
-        fights.length ? `Fights analysed: ${fights.slice(0,3).map(f => `${f.name}${f.keystoneLevel ? ` +${f.keystoneLevel}` : ""}${f.averageItemLevel ? ` (avg ${Math.round(f.averageItemLevel)} ilvl)` : ""}`).join(", ")}` : "",
-        "Note: No gear list from WCL — focus advice on performance patterns and biggest mechanical improvements.",
-      ].filter(Boolean).join("\n");
+        avgIlvl ? `Estimated avg ilvl from fights: ${avgIlvl}` : "",
+        fights.length ? `Fights: ${fights.slice(0, 5).map(f => [
+          f.name,
+          f.keystoneLevel ? `+${f.keystoneLevel}` : null,
+          f.averageItemLevel ? `(${Math.round(f.averageItemLevel)} ilvl)` : null,
+          f.kill === false ? "[wipe]" : null,
+        ].filter(Boolean).join(" ")).join(" | ")}` : "",
+        rankings?.data?.[0] ? `Latest ranking: ${Math.round(rankings.data[0].percentile ?? 0)}th percentile (${rankings.data[0].spec || ""})` : "",
+        "No item-by-item gear list available from WCL. Focus on: performance patterns, cooldown usage, survivability, spec-specific common mistakes.",
+      ];
+      return lines.filter(Boolean).join("\n");
     }
     return "No gear data — give best general spec advice.";
   };
@@ -1149,6 +1181,7 @@ Where am I actually equal to or ahead of my friend?`;
   };
 
   const reset = () => {
+    if (chatHistory.length > 0 && !window.confirm("Start a new session? Your current analysis will be lost.")) return;
     setStep(0); setInputMode(null); setDetectedClass(""); setDetectedSpec("");
     setDetectedGear([]); setGearSummary(""); setRioUrl(""); setRioError("");
     setWclUrl(""); setWclData(null); setWclError("");
@@ -1163,7 +1196,7 @@ Where am I actually equal to or ahead of my friend?`;
 
   // ── Render ────────────────────────────────────────────────────
   return (
-    <>
+    <ErrorBoundary>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cinzel+Decorative:wght@700&family=DM+Sans:wght@400;500;600&display=swap');
@@ -1240,8 +1273,8 @@ Where am I actually equal to or ahead of my friend?`;
                 <ModeCard icon={Link2} title="Raider.IO Profile" badge="Easiest" badgeColor={T.green}
                   description="Paste your profile URL — we pull your live gear automatically."
                   selected={inputMode === "rio"} onClick={() => setInputMode("rio")} />
-                <ModeCard icon={BarChart3} title="Warcraft Logs" badge="Deepest Insight" badgeColor="#8b6fff"
-                  description="Paste a log URL — we'll analyse your actual performance, not just gear."
+                <ModeCard icon={BarChart3} title="Warcraft Logs" badge="Performance Focus" badgeColor="#8b6fff"
+                  description="Paste a log URL — we'll analyse fight patterns and cooldown usage, not just gear."
                   selected={inputMode === "wcl"} onClick={() => setInputMode("wcl")} />
                 <ModeCard icon={FileText} title="SimC String" badge="Most Detail" badgeColor={T.gold}
                   description="Paste your /simc export for full enchant and gem analysis."
@@ -1489,7 +1522,7 @@ Where am I actually equal to or ahead of my friend?`;
                   {chatHistory.length > 0 && !loading && (
                     <div style={{ marginTop: 14, borderTop: `1px solid ${T.border}`, paddingTop: 14 }}>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <input ref={followUpRef} style={{ ...S.input, flex: 1 }} placeholder="Ask a follow-up…  ⌘K"
+                        <input ref={followUpRef} style={{ ...S.input, flex: 1 }} placeholder={`Ask a follow-up…  ${/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl+K"}`}
                           value={followUp} onChange={e => setFollowUp(e.target.value)}
                           onKeyDown={e => e.key === "Enter" && sendFollowUp()} />
                         <button style={{ ...S.primaryBtn, padding: "12px 18px", flexShrink: 0, opacity: followUp.trim() ? 1 : 0.45 }} onClick={sendFollowUp} disabled={!followUp.trim()}>Ask</button>
@@ -1615,10 +1648,16 @@ Where am I actually equal to or ahead of my friend?`;
                       </p>
                     </div>
                   )}
+                  {friendLoading && !loading && (
+                    <div style={{ marginTop: 10, padding: "10px 14px", background: T.surfaceHi, borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                      <Loader2 size={14} color={T.textSub} style={{ animation: "spin 1s linear infinite", flexShrink: 0 }} />
+                      <span style={{ color: T.textSub, fontSize: 13 }}>Looking up character…</span>
+                    </div>
+                  )}
                   <button style={{ ...S.primaryBtn, width: "100%", marginTop: 12, opacity: (friendLoading || loading || !friendUrl.trim()) ? 0.45 : 1 }}
                     onClick={sendCompare} disabled={friendLoading || loading || !friendUrl.trim()}>
-                    {(friendLoading || loading)
-                      ? <span style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}><Loader2 size={16} style={{animation:"spin 1s linear infinite"}} />Comparing...</span>
+                    {loading
+                      ? <span style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}><Loader2 size={16} style={{animation:"spin 1s linear infinite"}} />Analysing…</span>
                       : "Show Me the Gap"}
                   </button>
                   {chatHistory.map((msg, i) => {
@@ -1652,6 +1691,6 @@ Where am I actually equal to or ahead of my friend?`;
 
         </div>
       </div>
-    </>
+    </ErrorBoundary>
   );
 }
