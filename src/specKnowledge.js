@@ -7,7 +7,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 export const KNOWLEDGE_VERSION = "S1 12.0.5";
-export const KNOWLEDGE_DATE    = "2026-03-23";
+export const KNOWLEDGE_DATE    = "2026-03-28";
 
 export const SPEC_KNOWLEDGE = {
 
@@ -51,12 +51,13 @@ KEY TIPS: Mastery and Crit are co-equal top stats — do NOT stack one exclusive
   // ══════════════════════════════════════════════════════════════
 
   "Havoc":`SPEC: Havoc Demon Hunter (DPS)
-APEX TALENT: The Hunt empowers your next Eye Beam (+100% damage, wider AoE). The Hunt gains 15s reduced CD, +15% damage, DoT hits 2 extra enemies. Blade Dance +20% damage. Full Eye Beam channel resets Blade Dance CD.
-HERO TALENTS: Aldrachi Reaver (M+ burst, Reaver's Glaive AoE) | Fel-Scarred (Raid ST, persistent demon companion) — verify current tuning as both are close
-STAT PRIORITY: Agility > Crit (most valuable) > Haste > Versatility > Mastery (lowest). Both Crit and Mastery close for ring enchants — sim yourself.
-GEMS: 1x Indecipherable Eversong Diamond + Flawless Deadly Amethyst (Crit)
-ENCHANTS: Weapon — Two Enchant Weapon - Acuity of the Ren'dorei. Ring — Crit or Mastery (sim — both similar value). Helm/Shoulders/Boots — Avoidance
+APEX TALENT — Eternal Hunt (4-point): Rank 1: The Hunt empowers next Eye Beam (doubled damage, larger AoE). Rank 2: The Hunt gets 15/30s reduced CD, +15/30% damage, DoT applies to 2/4 extra targets. Rank 3 (Rank 3+4): Blade Dance +20% damage, guaranteed reset of its own cooldown after fully channeling Eye Beam. ALL 4 points mandatory in every build.
+HERO TALENTS: Fel-Scarred (RECOMMENDED for both Raid AND M+ — frequent burst AoE via Eye Beam/Demonic, consistent flexible choice) | Aldrachi Reaver (funnel/priority target focus — only take if you specifically need Reaver's Glaive for funnel damage). Method.gg: Fel-Scarred ahead in almost all profiles.
+STAT PRIORITY: Agility > Crit (top — Know Your Enemy interaction, Ragefire scaling) > Mastery (strong — scales all Chaos damage via Demonic Presence; Fel-Scarred leans harder into Mastery) > Haste > Versatility (lowest). Fel-Scarred favors Mastery to a larger extent; Aldrachi favors Crit.
+GEMS: 1x Indecipherable Eversong Diamond + Flawless Masterful Garnet (Mastery) in every other slot — Method.gg confirmed. Note: use gems giving 2 stats for better value.
+ENCHANTS: Weapon — 1x Jan'alai's Precision + 1x Arcane Mastery (Mastery+Haste preferred). Ring — Mastery or Crit (sim)
 FLASK: Flask of the Shattered Sun (Crit)
+POTION: Light's Potential (best for Havoc — pair with Bloodlust and major CDs; Potion of Recklessness viable at higher gear)
 WEAPON OIL: Two Thalassian Phoenix Oil
 BEST CRAFT: Glaive weapon first (Missive: Crit + Haste). Belt second.
 KEY TIPS: Always fully channel Eye Beam — Blade Dance reset ONLY triggers on full channel. Never cut it short.`,
@@ -135,7 +136,7 @@ KEY TIPS: Keeper of the Grove stacks multiple Grove Guardians — saving Convoke
 
   "Devastation":`SPEC: Devastation Evoker (DPS, mid-range 25-35 yards)
 APEX TALENT — Rising Fury: During Dragonrage, gain Rising Fury every 6s (+4% Haste/stack, max 5). At 5 stacks all damage +15%. After Dragonrage, Risen Fury maintains bonuses and generates Essence Burst every 4s.
-HERO TALENTS: Scalecommander (Raid — single-target, consistent damage) | Flameshaper (M+ — AoE burst, Fire Breath empowerment)
+HERO TALENTS: Scalecommander (RECOMMENDED for both Raid AND M+ — outperforms Flameshaper in almost all scenarios; Mass Disintegrate cleave, steerable Deep Breath, spread cleave) | Flameshaper (niche — only ahead in very long sustained AoE situations). Both Method.gg and Maxroll confirm Scalecommander as default.
 STAT PRIORITY: Intellect > Crit (top secondary — Crit and Haste very close, Crit edges ahead) > Haste > Mastery (Giantkiller — % Empower bonus) > Versatility
 GEMS: 1x Powerful Eversong Diamond (prefer variety of gem colors for Movement Speed bonus) + Flawless Quick Garnet/Flawless Deadly Peridot spread
 ENCHANTS: Weapon — Enchant Weapon - Acuity of the Ren'dorei or Jan'alai's Precision (within margin of error — buy cheapest). Ring — Crit (Eyes of the Eagle)
@@ -157,7 +158,7 @@ KEY TIPS: Dream Breath is highest-priority heal. The 1% damage reversal passive 
 
   "Augmentation":`SPEC: Augmentation Evoker (Support DPS, mid-range)
 APEX TALENT — Future Duplicate: Breath of Eons summons a future-you for 20s. Ebon Might extensions extend duplicate by 50%. While active: Ebon Might grants 100% extra stats, Upheaval/Eruption +25% damage.
-HERO TALENTS: Chronowarden (recommended — Temporal Artificer, buffs Breath of Eons) | Scalecommander (Bombardments, AoE focused)
+HERO TALENTS: Scalecommander (RECOMMENDED as default — less dependent on ally performance, notably ahead in M+, competitive in Raid) | Chronowarden (viable in Raid if allies coordinate burst; slightly ahead in Raid pure ST but reliant on ally skill). Icy Veins: "We recommend Scalecommander for the default raiding choice."
 STAT PRIORITY: Intellect > Crit (top secondary — scales Eruption and shared stats) = Haste (more Ebon Might extensions) > Mastery (Timewalker — shared stats) > Versatility
 GEMS: 1x Indecipherable Eversong Diamond + Flawless Deadly Peridot (Crit+Haste)
 ENCHANTS: Weapon — Jan'alai's Precision or Acuity of the Ren'dorei (buy cheapest). Ring — Crit (Eyes of the Eagle)
@@ -211,8 +212,8 @@ KEY TIPS: Stay within 25 yards of your pet to double the Mastery bonus from Spir
 APEX TALENT — Touch Rune: Touch of the Magi increases damage target receives from you by 15%. Arcane Charges further increase Arcane Blast/Pulse/Barrage by 30%. Arcane Missiles +20% damage. Touch explosion leaves a rune dealing 75% of explosion damage over 6s to nearby enemies.
 HERO TALENTS: Spellslinger (M+ — Spellfrost Bolt, Arcane Splinter burst) | Sunfury (Raid — Burden of Power, Glorious Incandescence ST)
 STAT PRIORITY: Intellect > Mastery (Savant — Mana pool, Mana regen, Arcane Charge damage, all spell damage) > Haste > Crit > Versatility. NOTE: All secondary stats are very close for Arcane. Simming yourself is especially important for this spec.
-GEMS: 1x Indecipherable Eversong Diamond + Flawless Versatile Amethyst (Versatility — generally best, sim yourself)
-ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Mastery or your top simmed stat
+GEMS: 1x Telluric Eversong Diamond (not Indecipherable — Arcane benefits from the mana/Mastery bonus) + one gem of EACH color (e.g. Flawless Quick Amethyst + Flawless Quick Garnet + Flawless Deadly Peridot + Flawless Deadly Lapis) to maximize the Telluric Movement Speed bonus. Method.gg confirmed.
+ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Eyes of the Eagle (updated March 16 2026 — Icy Veins says slightly better than stat enchants in almost all situations)
 FLASK: Flask of the Magisters (Mastery — scales Mana which scales Arcane Charge bonus)
 WEAPON OIL: Thalassian Phoenix Oil
 BEST CRAFT: Staff (Missive: Mastery + Haste). Belt second.
@@ -220,7 +221,7 @@ KEY TIPS: All secondaries are VERY close for Arcane — this is one of the specs
 
   "Fire":`SPEC: Fire Mage (DPS)
 APEX TALENT — Fired Up: Consuming Hot Streak has 20% chance to grant Fired Up (+4% Fire damage, 12s). Combustion increases Fired Up chance and extends Combustion by 1s. Gaining Fired Up reduces Fire Blast CD by 2.5s. All Fire damage +3%.
-HERO TALENTS: Sunfury (Raid ST — Burden of Power, strong Pyroblast windows) | Spellslinger (M+ — Spellfrost Bolt AoE chains)
+HERO TALENTS: Sunfury (RECOMMENDED for all content — Arcane Phoenix, Pyroblast windows, Meteorites) | Frostfire (undertuned at Season 1 launch — not recommended). NOTE: Spellslinger is NOT a Fire Mage hero talent. Fire options are Sunfury and Frostfire only.
 STAT PRIORITY: Intellect > Crit (Hot Streak requires 2 crits — more Crit = more Fired Up + Combustion extensions) > Haste (shorter Fire Blast/Scorch CDs) > Mastery (Ignite periodic) > Versatility
 GEMS: 1x Indecipherable Eversong Diamond + Flawless Deadly Amethyst (Crit)
 ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Crit (Eyes of the Eagle)
@@ -231,10 +232,10 @@ KEY TIPS: Combustion extension via Fired Up can spiral into 15+ second windows. 
 
   "Frost Mage":`SPEC: Frost Mage (DPS)
 APEX TALENT — Hand of Frost: Shattering an enemy has 10% chance to summon a Hand of Frost (500% Spell Power Frost damage). Each Freezing stack +1% Hand of Frost chance. Hand of Frost damage +1% spell damage for 8s. Ray of Frost summons 4 Hands of Frost, gains extra charge, +25% damage.
-HERO TALENTS: Frostfire (recommended — Frostfire Bolt weaving, strong sustained) | Spellslinger (alternative — Spellfrost Bolt AoE)
-STAT PRIORITY: Intellect > Versatility (HIGHEST secondary for Frost in Midnight — flat damage + damage reduction — this is a Midnight-specific change, do NOT use older guides) > Crit > Mastery (Freeze and Shatter — flat increase) > Haste. NOTE: Ring enchant changed February 2026 — verify with current sim.
-GEMS: 1x Indecipherable Eversong Diamond + Flawless Versatile Amethyst (Versatility) or top simmed
-ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Versatility or Crit (check current guides — changed Feb 2026)
+HERO TALENTS: Spellslinger (RECOMMENDED — Frost Splinter generation, Frozen Orb synergy, best for Raid and M+) | Frostfire (underperforming at launch, avoid unless specifically tuned up)
+STAT PRIORITY: Intellect > Mastery = Crit (CO-EQUAL top secondaries — Mastery scales Freeze/Shatter damage; Crit multiplies Shatter hits) > Haste > Versatility (LOWEST — avoid stacking). NOTE: Previous session had Versatility as #1 which was WRONG — verified Method.gg March 2026.
+GEMS: 1x Indecipherable Eversong Diamond + Flawless Masterful Amethyst (Mastery) or Flawless Deadly Amethyst (Crit) — sim your character
+ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Mastery or Crit (sim)
 FLASK: Flask of the Shattered Sun (Crit). Potion: Potion of Recklessness with CDs
 WEAPON OIL: Thalassian Phoenix Oil
 BEST CRAFT: Ring (non-Tier). Staff second (Missive: Versatility + Crit).
@@ -269,12 +270,12 @@ KEY TIPS: Thunder Focus Tea is a guaranteed Spiritfont trigger — save for burs
   "Windwalker":`SPEC: Windwalker Monk (DPS)
 APEX TALENT — Tigereye Brew: During combat you generate stacks that are spent when you cast Zenith to increase your chance to Crit. Outside combat stacks back to 10+ quickly. Primary gameplay note: spread out Zenith charges rather than using back-to-back, as the second use will have far fewer stacks.
 HERO TALENTS: Shado-Pan (RECOMMENDED for M+ — Flurry Strikes, Shado Over the Battlefield AoE, simpler to play, higher AoE) | Conduit of the Celestials (Raid boss damage — Invoke Xuen, Heart of the Jade Serpent, more complex)
-STAT PRIORITY: Agility > Versatility (TOP secondary for Windwalker — increases all damage and healing done, reduces damage taken; also valuable for self-healing Vivify) > Critical Strike > [varies by gear — sim required]. NOTE: Previous spec listed Crit first — Versatility is the correct top secondary.
-GEMS: 1x Indecipherable Eversong Diamond + Flawless Versatile Garnet (Versatility) or top simmed stat
-ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Versatility or your top simmed stat
-FLASK: Flask of the Shattered Sun
+STAT PRIORITY: Agility > Haste (top secondary — energy regen, Fists of Fury/RSK CD, rotation pace) > Critical Strike >= Mastery (Combo Strikes — never repeat same ability; all four stats very close and gear-dependent, always sim) >>> Versatility (LOWEST value for PvE Windwalker — does not benefit Touch of Death/Karma). NOTE: Previous session incorrectly placed Versatility as #1. Sim yourself — gear shifts rankings.
+GEMS: 1x Indecipherable Eversong Diamond + Flawless Quick Amethyst (Haste) or sim to find your current best
+ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Haste or Crit (sim — varies by gear)
+FLASK: Flask of the Blood Knights (Haste — confirmed Peak of Serenity March 2026)
 WEAPON OIL: Thalassian Phoenix Oil
-BEST CRAFT: Weapon (Missive: Agility + Versatility). Bracers second.
+BEST CRAFT: Weapon (Missive: Agility + Haste). Bracers second.
 KEY TIPS: Mastery: Combo Strikes — NEVER repeat the same ability back-to-back. This is the #1 Windwalker rule. Shado-Pan removes all tracking requirements for Energy spent. Zenith (replaces Storm, Earth, and Fire) is your primary cooldown.`,
 
   // ══════════════════════════════════════════════════════════════
@@ -357,7 +358,7 @@ KEY TIPS: Voidform is now the main cooldown (Dark Ascension removed). Halo is Ar
 
   "Assassination":`SPEC: Assassination Rogue (DPS)
 APEX TALENT — Implacable: Grants bonus Energy recharge after Envenom chain runs out (scaled to chain length). Increases Bleed and Nature damage (x2 points). Causes additional damage on Kingsbane, grants 5 Combo Points, instantly applies 10 poison stacks.
-HERO TALENTS: Deathstalker (recommended — Deathstalker's Mark, Symbolic Victory execute damage) | Trickster (AoE option — Unseen Blade, Fan the Hammer)
+HERO TALENTS: Fatebound (RECOMMENDED — completely passive coin-flip mechanic, no tracking required, competitive in all content) | Deathstalker (higher QoL cost — tracking Deathstalker's Mark is difficult especially on AoE and target swaps; can be ahead in pure ST funnel if willing to deal with complexity). Method.gg: "Fatebound is the recommendation." NOTE: Trickster is NOT an Assassination hero talent — it belongs to Subtlety/Outlaw.
 STAT PRIORITY: Agility > Haste = Crit (very close — each can be top depending on gear) > Mastery (Potent Assassin — DoT damage %) > Versatility. Use Raidbots — secondary stats are tight and gear-dependent.
 GEMS: 1x Powerful Eversong Diamond + Flawless Deadly Amethyst (Crit)
 ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Crit (Eyes of the Eagle) — but sim, as Haste can beat Crit
@@ -395,21 +396,21 @@ KEY TIPS: Meet your Haste breakpoint (600 Deathstalker / 700 Trickster) before i
   "Elemental":`SPEC: Elemental Shaman (DPS)
 APEX TALENT — Feedback Loop: Spell Crit chance +5%/+10% (2 points). Elemental Fury increases spell Crit damage +25%/+50% (2 points). Elemental Overloads have 25% chance to cause an additional Overload (once per cast).
 HERO TALENTS: Stormbringer (MANDATORY for all group content — Tempest, superior AoE, complex but high reward) | Farseer (easier, better mobility, significantly behind Stormbringer on sustained AoE in stationary situations, use for open world or if you need mobility)
-STAT PRIORITY: Intellect > Crit (double-dips via Feedback Loop — more Crit CHANCE and more Crit DAMAGE both scale from same investment; top secondary by clear margin) > Haste > Mastery (Elemental Overload %) > Versatility
-GEMS: 1x Indecipherable Eversong Diamond + Flawless Deadly Amethyst (Crit)
-ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Crit (Eyes of the Eagle)
-FLASK: Flask of the Shattered Sun (Crit — excellent Feedback Loop synergy)
+STAT PRIORITY: Intellect > Mastery (TOP secondary — Feedback Loop makes Elemental Overloads far more valuable; hard cap at 100% Mastery, soft cap 86% with Elemental Blast) > Haste > Crit (Feedback Loop also boosts Crit damage via Elemental Fury, still solid) > Versatility. NOTE: Crit is NOT the top stat despite Feedback Loop — Mastery is. Icy Veins confirms.
+GEMS: 1x Indecipherable Eversong Diamond + Flawless Masterful Amethyst (Mastery) primary
+ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Mastery or Eyes of the Eagle (sim)
+FLASK: Flask of the Magisters (Mastery — top secondary for Elemental)
 WEAPON OIL: Thalassian Phoenix Oil
 BEST CRAFT: Staff or MH+OH (Missive: Crit + Haste). Belt second.
 KEY TIPS: Crit is the best secondary by a notable margin — both your chance AND damage scale with Crit investment. Stormbringer is mandatory for M+ and raid competitive play.`,
 
   "Enhancement":`SPEC: Enhancement Shaman (DPS)
 APEX TALENT — Storm Unleashed: Crash Lightning can reset its own CD and deal repeated strikes, building Maelstrom Weapon stacks. Strong burst AoE.
-HERO TALENTS: Stormbringer (default for group content — Tempest AoE) | Totemic (Haste focus, Surging Totem, tighter single-target rotation)
-STAT PRIORITY: Agility > Haste (faster Maelstrom stack buildup, shorter Stormstrike CD) > Mastery (Enhanced Elements — % Fire/Frost/Nature damage, also increases Windfury/Stormsurge chance) > Crit > Versatility. For Stormbringer builds, sim yourself — Mastery and Haste close. For Totemic, Haste leads more clearly.
-GEMS: 1x Indecipherable Eversong Diamond + Flawless Quick Amethyst (Haste) or Flawless Masterful Amethyst (Mastery)
-ENCHANTS: Weapon — Two Enchant Weapon - Acuity of the Ren'dorei. Ring — Mastery (Stormbringer) or Haste (Totemic). CRITICAL: DO NOT use Thalassian Phoenix Oil — Windfury Weapon and Flametongue Weapon imbues override weapon enchant consumables. Oils are wasted gold for Enhancement.
-FLASK: Flask of the Magisters (Mastery for Stormbringer) or Flask of the Blood Knights (Haste for Totemic)
+HERO TALENTS: Totemic (RECOMMENDED at Season 1 launch — Mastery top, Surging Totem burst, Doom Winds synergy with Hot Hand) | Stormbringer (Haste top, Tempest nuke, higher complexity). Method.gg: "Totemic has the edge in all situations." Icy Veins updated to Totemic as M+ default Feb 10, 2026.
+STAT PRIORITY: For Totemic (recommended): Agility > Mastery (top — scales all magic damage + Windfury, Supportive Imbuements amplification) > Haste > Crit > Versatility. For Stormbringer: Agility > Haste (top — rotation pace, Tempest generation) > Mastery = Crit > Versatility. NOTE: Previous spec had Totemic/Stormbringer backwards. Sim yourself to confirm — both hero trees can share a gear set without significant loss.
+GEMS: 1x Indecipherable Eversong Diamond + Flawless Masterful Amethyst (Mastery — Totemic default) or Flawless Quick Amethyst (Haste — Stormbringer)
+ENCHANTS: Weapon — Two Enchant Weapon - Acuity of the Ren'dorei. Ring — Mastery (Totemic default) or Haste (Stormbringer). CRITICAL: DO NOT use Thalassian Phoenix Oil — Windfury Weapon and Flametongue Weapon imbues override weapon enchant consumables. Oils are wasted gold for Enhancement.
+FLASK: Flask of the Magisters (Mastery — Totemic default) or Flask of the Blood Knights (Haste — Stormbringer)
 BEST CRAFT: 1H Weapons (Missive: Agility + Haste — craft both eventually). Belt second.
 KEY TIPS: NEVER use Thalassian Phoenix Oil — Enhancement's imbues override weapon oils completely. Maelstrom at 5 stacks before spending is the core loop. Two Acuity of the Ren'dorei weapon enchants are permanent enchants (not oils).`,
 
@@ -507,6 +508,8 @@ export function getSpecKnowledge(activeSpec, activeClass) {
   if (spec === "frost"        && cls.includes("death"))   return SPEC_KNOWLEDGE["Frost DK"]           || "";
   if (spec === "frost"        && cls.includes("mage"))    return SPEC_KNOWLEDGE["Frost Mage"]         || "";
   if (spec === "frost dk"                              )   return SPEC_KNOWLEDGE["Frost DK"]           || "";
+  if (spec === "frost mage"                            )   return SPEC_KNOWLEDGE["Frost Mage"]         || "";
+  if (spec === "frost"        && !cls                  )   return SPEC_KNOWLEDGE["Frost DK"]           || ""; // safe default
   if (spec === "holy"         && cls.includes("paladin")) return SPEC_KNOWLEDGE["Holy Paladin"]       || "";
   if (spec === "holy"         && cls.includes("priest"))  return SPEC_KNOWLEDGE["Holy Priest"]        || "";
   if (spec === "restoration"  && cls.includes("druid"))   return SPEC_KNOWLEDGE["Restoration Druid"]  || "";
