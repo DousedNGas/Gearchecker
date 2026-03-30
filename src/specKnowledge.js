@@ -1,13 +1,132 @@
 // ═══════════════════════════════════════════════════════════════
-// Vaultwright — Spec Knowledge
-// Deep audited against Icy Veins Season 1 guides, March 2026
-// Sources: icy-veins.com, method.gg (verified 23 March 2026)
-// CRITICAL: Always direct players to sim via Raidbots for final
-//           gem/enchant calls — stat weights shift with gear.
+// Vaultwright — Spec Knowledge (Recursive / Layered Architecture)
+//
+// Three-layer knowledge system:
+//   Layer A — CLASS_KNOWLEDGE:   shared mechanics for all specs in a class
+//             (Runeforges, utility toolkit, positioning rules, group buffs)
+//   Layer B — SPEC_KNOWLEDGE:    spec-specific overrides only
+//             (Apex talent, hero talent choice, stat priority, gems, craft)
+//   Layer C — SPEC_CORRECTIONS:  reviewed live corrections from the
+//             verification pipeline (highest authority — overrides A + B)
+//
+// getSpecKnowledge() merges all three layers in order.
+// Claude's live web_search can discover conflicts → emits [KNOWLEDGE_UPDATE]
+// blocks → App strips them → api/corrections.js → Discord review →
+// developer merges into SPEC_CORRECTIONS → next user gets corrected knowledge.
+//
+// Sources: icy-veins.com, method.gg, Peak of Serenity (verified 2026-03-28)
 // ═══════════════════════════════════════════════════════════════
 
 export const KNOWLEDGE_VERSION = "S1 12.0.5";
 export const KNOWLEDGE_DATE    = "2026-03-28";
+
+// ══════════════════════════════════════════════════════════════════
+// LAYER A — CLASS KNOWLEDGE
+// Shared mechanical rules, utility toolkit, positioning constraints.
+// Applied to every spec in the class automatically.
+// Update here once → all specs in the class inherit it.
+// ══════════════════════════════════════════════════════════════════
+
+export const CLASS_KNOWLEDGE = {
+
+  "Death Knight": `CLASS: Death Knight
+RUNEFORGE — ALL DK SPECS: Death Knight weapon enchants are Runeforges ONLY. Standard enchants and weapon oils (including Thalassian Phoenix Oil) MUST NOT be applied to any DK weapon — Runeforge completely replaces them.
+  Rune of the Fallen Crusader: Default for Blood and Frost DK (sustained output + survivability proc)
+  Rune of Razorice: M+ alternative for Frost DK (adds Frost vulnerability stack, pairs with Frost damage)
+  Rune of the Apocalypse: Mandatory for Unholy DK in all content (Disease proc synergy)
+CLASS UTILITY: Anti-Magic Shell (personal magic immunity 5s — usable while casting, absorbs incoming magic), Anti-Magic Zone (group 20% magic damage reduction — place reactively on dangerous magic casts or overlapping mechanics), Death Gate (fast class-hall travel), Chains of Ice (strong slow + snare).
+DEATH GRIP: Pull any enemy to you — invaluable in M+ for repositioning casters, pulling separated mobs onto the tank, or yanking priority targets to the kill zone. Coordinate with tank before using on non-priority enemies.`,
+
+  "Demon Hunter": `CLASS: Demon Hunter
+CHAOS BRAND: Demon Hunters apply a passive debuff increasing magic damage taken by 5%. Always valuable in magic-heavy groups — one of the reasons DHs are always welcome in group content.
+MOBILITY: Fel Rush and Vengeful Retreat give DH one of the best gap-closing kits in the game. Double Jump + Glide for vertical movement. Devourer adds mid-range caster positioning (25-35 yards) — unique to that spec.
+SPECTRAL SIGHT: Brief true-sight through walls — niche but useful for revealing hidden enemies in M+.
+UTILITY: Imprison (CC on non-boss non-player enemies), Consume Magic (magic dispel off enemies on a short CD — use on buffed M+ trash).`,
+
+  "Druid": `CLASS: Druid
+MARK OF THE WILD: Group-wide 5% stats buff — always keep active. Refreshes automatically on entering combat if talented (most specs take this).
+STAMPEDING ROAR: Group-wide movement speed increase (60% for 8s) — one of the most valuable movement cooldowns in the game. Pre-place it for predictable movement mechanics in raid and M+.
+INNERVATE: Grants a friendly healer free casting for 10 seconds — coordinate with healers on mana-intensive fights or after heavy AoE healing phases in M+.
+REBIRTH: In-combat resurrection — on a shared 10-minute cooldown with all other combat rezzes. Save for key players (tanks, healers).
+TRAVEL FORM: Instant shapeshifting breaks all movement-impairing effects. Use to escape roots and snares — shapeshifting in and out is effectively a root break.`,
+
+  "Evoker": `CLASS: Evoker — CRITICAL POSITIONAL AND MECHANICAL NOTES
+MID-RANGE SPEC: All Evoker DPS and support abilities have a minimum 25-yard range. Optimal combat position is 25-35 yards from target. Too close (under 25y) = abilities fail. Too far (over 35y) = some abilities don't reach. Evoker plays in a unique "mid-range" zone — position differently than melee or traditional ranged.
+DRACTHYR ONLY: Evoker is exclusively Dracthyr. No race optimization is possible. Racial abilities (Tail Swipe, Wing Buffet, Landslide) are fixed.
+HOVER: Enables casting ALL spells while moving. Critical for maintaining uptime during movement-heavy phases. Preserve Hover charges for mandatory movement requirements rather than casual repositioning.
+EMPOWER MECHANIC: Hold-to-charge abilities unlock higher ranks at each threshold. Release at the correct rank for your build — most DPS builds prefer Rank 1 (quickest cast); Preservation usually wants max rank. Interrupting an Empower mid-channel wastes the cast entirely.
+RESCUE: Physically moves a targeted ally to your position. One of the strongest reactive utilities in the game — plan in advance which player to Rescue for specific dangerous mechanics in each fight.`,
+
+  "Hunter": `CLASS: Hunter
+MISDIRECTION: Redirects your next threat-generating ability to a friendly target (usually the tank). Use before pulls to help establish threat, or if you accidentally over-aggro.
+BINDING SHOT: AoE stun/root on a 45s CD — excellent M+ CC. Mobs that walk out of the zone get rooted; mobs that stay get stunned after 1.5s.
+ASPECT OF THE TURTLE: Personal immunity for 8s — blocks ALL damage and harmful effects. Use on targeted mechanics, not as a panic button when already taking damage.
+FEIGN DEATH: Drops combat and resets threat. Useful for mistake recovery and combat resetting in M+. Does not work on some boss abilities that track the player.
+TRANQUILIZING SHOT: Removes one enrage effect or magic buff from an enemy. Essential on many M+ packs and some raid mechanics — always check if enemies enrage.`,
+
+  "Mage": `CLASS: Mage
+TIME WARP: Mage's Bloodlust equivalent — 30% Haste for 40s on a 5-minute CD. Coordinate with the group: most specs benefit from stacking personal damage cooldowns inside Time Warp. After use, affected players gain Temporal Displacement (prevents re-buffing for 10 minutes).
+SPELLSTEAL: Steals a beneficial buff from an enemy and applies it to you. Extremely powerful on many M+ bosses and trash — check which enemies buff themselves.
+REMOVE CURSE: Removes curse effects from allies. One of the few classes with this dispel.
+INVISIBILITY: Drops combat after 3 seconds, then full stealth. Can skip dangerous packs in M+ but requires pre-planning.
+COUNTERSPELL: 24s CD interrupt on a single target — Mage has one of the shortest interrupt CDs in the game. Always kick on cooldown in M+.`,
+
+  "Monk": `CLASS: Monk
+ROLL / CHI TORPEDO: Among the strongest short-distance mobility tools in the game. Two charges. Tiger's Lust removes movement-impairing effects from a friendly target — strong external on rooted allies.
+PARALYSIS: Single-target CC (30s, 15s in PvP) — works on most M+ enemies including many that resist standard CC. Breaks on damage.
+RING OF PEACE: Knockback ring on a 45s CD — excellent interrupt tool: knock mobs away from casts, push them off ledges in M+. Underused by many players.
+FORTIFYING BREW: Large personal defensive on a 6-minute CD — use proactively before high-damage phases, not reactively.
+TRANSCENDENCE: Place a spirit anchor, return to it instantly — advanced positioning tool for specific encounter mechanics.`,
+
+  "Paladin": `CLASS: Paladin
+BLESSING OF PROTECTION: Makes a target immune to physical damage and removes physical debuffs for 10s. Cannot cast physical attacks or be targeted by physical abilities. Applies Forbearance (prevents other immunities for 30s). Invaluable for removing dangerous physical debuffs in raid.
+BLESSING OF SACRIFICE: Redirects 30% of incoming damage from an ally to you for 12s. Use on a low-health key player combined with your own defensives.
+DEVOTION AURA: Raid-wide 20% magic damage reduction for 8s on a 3-minute CD. Coordinate with the raid for predictable magical damage spikes — one of the best group defensives in the game.
+DIVINE SHIELD: Complete immunity for 8s. Clears all debuffs and resets threat. Applies Forbearance. High value — plan usage carefully around Forbearance lockout.
+LAY ON HANDS: Full health restore on a target on a 10-minute CD. Save for actual near-death emergencies on key players.`,
+
+  "Priest": `CLASS: Priest
+POWER INFUSION: 20% Haste to yourself or an ally for 20s on a 2-minute CD. Coordinate with the highest-output DPS or your healer during throughput-intensive phases. Using it on yourself is often suboptimal if a DPS can benefit more.
+MASS DISPEL: AoE magic dispel — removes magic effects from multiple allies AND enemies simultaneously. One of the most powerful utility spells in the game. Works on many otherwise undispellable effects.
+FADE: Temporary threat drop + speed increase. Shadow gains additional benefits. Use before threat-sensitive moments.
+LEAP OF FAITH (Life Grip): Physically pulls a friendly target to you. Invaluable for saving players from dangerous mechanics — one of the most unique utilities in the game.`,
+
+  "Rogue": `CLASS: Rogue
+SHROUD OF CONCEALMENT: Group-wide stealth for 15 seconds — unique to Rogue, and one of the most powerful M+ utilities in the game. Use to bypass dangerous trash packs entirely. Plan your M+ route around Shroud windows.
+DUAL WEAPON OILS: Apply Thalassian Phoenix Oil to BOTH weapons (main hand AND off hand). This doubles the proc rate compared to one weapon. Never skip the off-hand application.
+COMBO POINTS: All three Rogue specs build to 5+ combo points before using finishers. Energy pooling and combo point management is the core mechanical skill for all Rogue specs.
+CC TOOLKIT: Sap (Stealth only — long CC on non-bosses), Blind (breaks on any damage — use on isolated targets or after other CCs run out), Gouge (brief stun requiring you to face the target). Most M+ enemies are susceptible to at least one of these.
+CRIMSON VIAL: Strong self-heal on a 30s CD — use proactively during dangerous mechanics rather than waiting until low health.`,
+
+  "Shaman": `CLASS: Shaman
+BLOODLUST / HEROISM: 30% Haste for 40s on a 5-minute CD. Coordinate timing with the group — most players should stack personal damage cooldowns inside it. Affected targets gain Exhaustion/Sated (prevents re-buffing for 10 minutes).
+WIND RUSH TOTEM: Group-wide 60% movement speed increase for 5s on a 2-minute CD. Invaluable for predictable movement phases in raids and M+. Pre-place it before movement mechanics.
+TREMOR TOTEM: Breaks Fear, Charm, and Sleep effects from all nearby allies on a 1-minute CD. Situationally critical — many M+ packs apply fear effects.
+EARTH ELEMENTAL: Large personal and nearby-enemy damage reduction cooldown. Underused defensive — strong for surviving dangerous mechanics.
+PURGE: Removes one magic buff from an enemy on a 1.5s cast. Check which M+ enemies and bosses buff themselves — Purge is highly valuable on many encounters.
+CAPACITOR TOTEM: AoE stun after a 1-second delay. Strong interrupt tool for M+ packs casting dangerous abilities simultaneously.`,
+
+  "Warlock": `CLASS: Warlock
+HEALTHSTONES: Create and distribute Healthstones to your group before every M+ pull and before raid boss encounters. Healthstones do NOT share a cooldown with health potions — both can be used in the same fight for significant total healing.
+DEMONIC GATEWAY: Creates a two-way teleport between two points. Place proactively on movement-heavy encounters. One of the strongest group utility spells in the game — underutilized by many Warlock players.
+SOUL LEECH: Passive absorb shield on all Warlock damage for you and your pet — provides consistent background mitigation across all specs.
+DARK PACT: Sacrifice a percentage of your demon's health for a massive personal absorb shield. Best used proactively on known high-damage moments. Demon health regenerates — don't hesitate to use it.
+SOULSTONE: Combat resurrection on a 10-minute shared CD. Set on a key player before dangerous phases as a contingency.`,
+
+  "Warrior": `CLASS: Warrior
+RALLYING CRY: Group-wide 15% maximum health increase for 10s on a 3-minute CD. One of the strongest group survival cooldowns — coordinate with healers for dangerous AoE damage windows in M+ and raid.
+HEROIC LEAP: Instant ground-targeted jump — strong repositioning and gap-closing. Use for positioning, not just as a gap closer.
+INTIMIDATING SHOUT: AoE fear on a 1-minute CD — breaks on damage to all targets except the primary focus target. Use to interrupt multiple simultaneous dangerous casts or control large M+ packs.
+SPELL REFLECTION: Reflects or reduces magic damage — significantly underused. Strong against many boss targeted magic abilities.`,
+
+};
+
+// ══════════════════════════════════════════════════════════════════
+// LAYER B — SPEC KNOWLEDGE
+// Spec-specific overrides: Apex talent, hero talent choice, stat
+// priority, gems/enchants, craft target, key spec tips.
+// Class-level rules (Runeforges, utility toolkit) live in Layer A.
+// ══════════════════════════════════════════════════════════════════
 
 export const SPEC_KNOWLEDGE = {
 
@@ -17,10 +136,10 @@ export const SPEC_KNOWLEDGE = {
 
   "Blood":`SPEC: Blood Death Knight (Tank)
 APEX TALENT — Dance of Midnight: Randomly summons additional Dancing Rune Weapons, combining with Blood's Apex passive that grants extra DRW procs from Rune consumption. San'layn builds lean into Vampiric Strike and Blood Beast for higher throughput; Deathbringer brings a more methodical 45-second burst window and is easier to play.
-HERO TALENTS: San'layn (recommended — higher throughput, Blood Beast AoE/ST) | Deathbringer (easier, solid)
-STAT PRIORITY: Strength > Versatility > Haste > Mastery (Blood Shield) > Crit. All secondaries reasonably close — ilvl beats stat hunting.
+HERO TALENTS: San'layn (Icy Veins recommended — higher throughput via Vampiric Strike/Blood Beast, currently ~10% ahead on ST and cleave) | Deathbringer (Maxroll recommended — simpler execution, strong passive reduction via Rune Carved Plates, slightly ahead for M+ funnel according to some sources). SOURCE CONFLICT: Icy Veins favors San'layn; Maxroll/Boostmatch favor Deathbringer for all content. Both are fully viable — choose based on your content and complexity preference.
+STAT PRIORITY (hero-talent dependent): Deathbringer: Strength > Crit = Versatility = Mastery > Haste. San'layn: Strength > Haste > Crit = Versatility = Mastery (Haste fuels Essence of the Blood Queen during DRW windows). For both: ilvl almost always beats chasing stats — do not sacrifice 10+ ilvl for secondaries. Sim yourself (Method.gg March 2026).
 GEMS: 1x Indecipherable Eversong Diamond + Flawless Versatile Garnet (Versatility)
-ENCHANTS: Weapon — Runeforge ONLY (Rune of the Fallen Crusader sustained / Rune of Razorice M+). Ring — Versatility. Do NOT use Thalassian Phoenix Oil — Runeforge replaces weapon enchants for all DK specs.
+ENCHANTS: Weapon — Runeforge ONLY — choose per content: Rune of the Fallen Crusader (sustained default) | Rune of Razorice (M+). Ring — Versatility.
 FLASK: Flask of the Shattered Sun or Flask of the Magisters
 BEST CRAFT: 2H Weapon first (largest throughput gain). Avoid Chest (Tier slot).
 KEY TIPS: Death Strike is your core survival tool — use on cooldown for self-healing. San'layn's Vampiric Strike procs during Dark Transformation maintain Essence of the Blood Queen buff — prioritise pressing it.`,
@@ -30,7 +149,7 @@ APEX TALENT — Chosen of Frostbrood: Frostwyrm's Fury deals 100% increased dama
 HERO TALENTS: Deathbringer (Raid — 2H Breath build) | Rider of the Apocalypse (M+)
 STAT PRIORITY: Strength > Mastery (PRIMARY secondary — Potion of Recklessness procs your highest stat, want it to be Mastery) > Crit (Killing Machine procs) > Haste > Versatility. WARNING: Our stat priority previously had Haste ranked above Mastery — this was WRONG. Mastery is the top secondary for Frost DK in Midnight.
 GEMS: 1x Indecipherable Eversong Diamond + Flawless Masterful Garnet (Mastery) primary
-ENCHANTS: Weapon — Runeforge ONLY (Rune of the Fallen Crusader). Ring — Mastery. Do NOT use Thalassian Phoenix Oil.
+ENCHANTS: Weapon — Runeforge ONLY: Rune of the Fallen Crusader (default) | Rune of Razorice (M+ alternative). Ring — Mastery.
 FLASK: Flask of the Magisters (Mastery — synergises with Potion of Recklessness)
 POTION: Potion of Recklessness (procs Mastery = massive value — do NOT use Light's Potential instead)
 BEST CRAFT: 2H Weapon (Missive: Mastery + Crit). Frost runs 2H for Breath of Sindragosa builds. Never craft 1H if running Breath.
@@ -41,7 +160,7 @@ APEX TALENT — Forbidden Knowledge: Army of the Dead transforms Death Coil into
 HERO TALENTS: Rider of the Apocalypse (recommended, M+ — Reanimation, Menacing Magus) | San'layn (Raid — Vampiric Strike, Blood Beast quadratic scaling)
 STAT PRIORITY: Strength > Mastery = Crit (co-equal — example distribution: 1200 Mastery / 1000 Crit / 200 Haste / 0 Versatility) > Versatility > Haste (LOWEST value for Unholy)
 GEMS: 1x Indecipherable Eversong Diamond + Flawless Masterful Lapis (Mastery) and Flawless Deadly Lapis (Crit) alternating
-ENCHANTS: Weapon — Runeforge ONLY (Rune of the Apocalypse — best for all Unholy content including M+). Ring — Mastery. Do NOT use weapon oils.
+ENCHANTS: Weapon — Runeforge ONLY: Rune of the Apocalypse (mandatory for Unholy — all content). Ring — Mastery.
 FLASK: Flask of the Magisters (Mastery preferred)
 BEST CRAFT: 2H Weapon (Missive: Mastery + Crit). Neck second.
 KEY TIPS: Mastery and Crit are co-equal top stats — do NOT stack one exclusively. Army of the Dead is your primary DPS cooldown. Pets inherit your stats dynamically (0-5 second delay). Haste is your lowest value secondary — avoid gemming for it. Death from Range: Scourge Strike now 30 yards — you can maintain much of your rotation from range.`,
@@ -63,7 +182,7 @@ BEST CRAFT: Glaive weapon first (Missive: Crit + Haste). Belt second.
 KEY TIPS: Always fully channel Eye Beam — Blade Dance reset ONLY triggers on full channel. Never cut it short.`,
 
   "Vengeance":`SPEC: Vengeance Demon Hunter (Tank)
-APEX TALENT — Untethered Rage: Soul Cleave/Spirit Bomb have a chance per Soul Fragment consumed to allow free Metamorphosis for 10 seconds. Extra fragments per cast = +5% damage/fragment. Non-procs build Seething Anger stacks (+1% Agility, increases proc chance).
+APEX TALENT — Untethered Rage (4 points): Ranks 1+4: Soul Cleave and Spirit Bomb have a chance per Soul Fragment consumed to grant a free Metamorphosis charge lasting 10 seconds (use within 12s). Ranks 2+3 (passive): increases Soul Cleave and Spirit Bomb damage, AND allows both to consume one additional Soul Fragment per cast — which in turn raises your proc rate. All 4 points mandatory. There are no "Seething Anger" stacks — that was a hallucination.
 HERO TALENTS: Aldrachi Reaver | Fel-Scarred — both viable for tank
 STAT PRIORITY: Agility > Versatility > Haste > Mastery (Fel Blood armor) > Crit
 GEMS: 1x Indecipherable Eversong Diamond + Flawless Versatile Garnet
@@ -74,8 +193,8 @@ KEY TIPS: More Soul Fragments consumed per cast = higher Untethered Rage chance.
 
   "Devourer":`SPEC: Devourer Demon Hunter (NEW — INT-based DPS, mid-range 25-35 yards)
 APEX TALENT — Midnight: Collapsing Star always critically strikes. All Cosmic damage +3% (x2 points). Collapsing Star crit damage +50% of your Crit chance. Void Metamorphosis spawns 5 Soul Fragments + grants immediate Collapsing Star.
-HERO TALENTS: Void-Scarred (recommended — Mastery focus, Void Meta synergy) | Annihilator (Haste focus, faster Meta cycling for single-target)
-STAT PRIORITY: Intellect (PRIMARY — Devourer is INT-based, NOT Agility) > Mastery (Void-Scarred — Monster Within, doubles during Void Meta) > Haste (Annihilator wants Haste for ramp speed) > Versatility > Crit (lowest — Collapsing Star always crits so raw Crit less efficient)
+HERO TALENTS: Annihilator (RECOMMENDED — slightly ahead in both AoE and ST, easier execution without melee weaving, Voidfall meteor burst, no bugs) | Void-Scarred (alternative — burst Voidsurge windows during Void Meta, currently has bugs affecting some builds; Icy Veins and Maxroll both recommend Annihilator as default due to bugs + cleave flexibility)
+STAT PRIORITY (hero-talent dependent): Intellect (PRIMARY — Devourer is INT-based, NOT Agility) > Haste (Annihilator — top secondary, ramps Void Metamorphosis via Emptiness, Icy Veins: "Annihilator strongly prefers Haste") / Mastery (Void-Scarred — Monster Within doubles during Void Meta) > Mastery/Haste (whichever is secondary for your build) > Versatility > Crit (lowest — Collapsing Star always crits, raw Crit less efficient). Both builds share a gear set without significant loss.
 GEMS: 1x Indecipherable Eversong Diamond + Flawless Quick Amethyst (Haste)
 ENCHANTS: Weapon — Enchant Weapon - Arcane Mastery + Enchant Weapon - Berserker's Rage pair (Mastery+Haste preferred) OR two Acuity of the Ren'dorei at lower gear. Ring — Mastery or Haste (sim). Helm/Shoulders/Boots — Avoidance
 FLASK: Flask of the Magisters (Mastery — Void-Scarred preferred)
@@ -134,7 +253,7 @@ KEY TIPS: Keeper of the Grove stacks multiple Grove Guardians — saving Convoke
   // EVOKER
   // ══════════════════════════════════════════════════════════════
 
-  "Devastation":`SPEC: Devastation Evoker (DPS, mid-range 25-35 yards)
+  "Devastation":`SPEC: Devastation Evoker (DPS)
 APEX TALENT — Rising Fury: During Dragonrage, gain Rising Fury every 6s (+4% Haste/stack, max 5). At 5 stacks all damage +15%. After Dragonrage, Risen Fury maintains bonuses and generates Essence Burst every 4s.
 HERO TALENTS: Scalecommander (RECOMMENDED for both Raid AND M+ — outperforms Flameshaper in almost all scenarios; Mass Disintegrate cleave, steerable Deep Breath, spread cleave) | Flameshaper (niche — only ahead in very long sustained AoE situations). Both Method.gg and Maxroll confirm Scalecommander as default.
 STAT PRIORITY: Intellect > Crit (top secondary — Crit and Haste very close, Crit edges ahead) > Haste > Mastery (Giantkiller — % Empower bonus) > Versatility
@@ -143,9 +262,9 @@ ENCHANTS: Weapon — Enchant Weapon - Acuity of the Ren'dorei or Jan'alai's Prec
 FLASK: Flask of the Shattered Sun (Crit)
 WEAPON OIL: Thalassian Phoenix Oil
 BEST CRAFT: Weapon (Missive: Crit + Haste). Avoid Chest (Tier).
-KEY TIPS: Dragonrage lasts 18s — reach 3+ Rising Fury stacks within it. Risen Fury window after Dragonrage: dump Essence Burst aggressively. Stay at 25-35 yards.`,
+KEY TIPS: Dragonrage lasts 18s — reach 3+ Rising Fury stacks within it. Risen Fury window after Dragonrage: dump Essence Burst aggressively.`,
 
-  "Preservation":`SPEC: Preservation Evoker (Healer, mid-range)
+  "Preservation":`SPEC: Preservation Evoker (Healer)
 APEX TALENT — Merithra's Blessing: Essence abilities chance to upgrade next Reversion to heal target + 5 nearby allies for 250% Spell Power. Reversion passively reverses 1% of all damage taken. Dream Breath instant healing +125%, always grants Merithra's Blessing.
 HERO TALENTS: Temporal Anomaly (recommended — consistent, mana efficient) | Chronowarden (Chrono Ward shields, more burst)
 STAT PRIORITY: Intellect > Mastery (Golden Hour — HoT bonus) > Haste (more Essence casts, more procs) > Versatility > Crit
@@ -156,7 +275,7 @@ WEAPON OIL: Thalassian Phoenix Oil
 BEST CRAFT: Staff (Missive: Mastery + Haste).
 KEY TIPS: Dream Breath is highest-priority heal. The 1% damage reversal passive is meaningful on AoE damage encounters.`,
 
-  "Augmentation":`SPEC: Augmentation Evoker (Support DPS, mid-range)
+  "Augmentation":`SPEC: Augmentation Evoker (Support DPS)
 APEX TALENT — Future Duplicate: Breath of Eons summons a future-you for 20s. Ebon Might extensions extend duplicate by 50%. While active: Ebon Might grants 100% extra stats, Upheaval/Eruption +25% damage.
 HERO TALENTS: Scalecommander (RECOMMENDED as default — less dependent on ally performance, notably ahead in M+, competitive in Raid) | Chronowarden (viable in Raid if allies coordinate burst; slightly ahead in Raid pure ST but reliant on ally skill). Icy Veins: "We recommend Scalecommander for the default raiding choice."
 STAT PRIORITY: Intellect > Crit (top secondary — scales Eruption and shared stats) = Haste (more Ebon Might extensions) > Mastery (Timewalker — shared stats) > Versatility
@@ -210,7 +329,7 @@ KEY TIPS: Stay within 25 yards of your pet to double the Mastery bonus from Spir
 
   "Arcane":`SPEC: Arcane Mage (DPS)
 APEX TALENT — Touch Rune: Touch of the Magi increases damage target receives from you by 15%. Arcane Charges further increase Arcane Blast/Pulse/Barrage by 30%. Arcane Missiles +20% damage. Touch explosion leaves a rune dealing 75% of explosion damage over 6s to nearby enemies.
-HERO TALENTS: Spellslinger (M+ — Spellfrost Bolt, Arcane Splinter burst) | Sunfury (Raid — Burden of Power, Glorious Incandescence ST)
+HERO TALENTS: Sunfury (recommended — Arcane Phoenix pet, Arcane Soul burst window, Memory of Al'ar; strongest overall) | Spellslinger (M+ alternative — Arcane Splinter generation, Polished Focus Barrage loop). NOTE: Both are Arcane-only hero trees. Spellfrost Bolt is NOT an Arcane mechanic — that belongs to Frost Mage Frostfire hero talent.
 STAT PRIORITY: Intellect > Mastery (Savant — Mana pool, Mana regen, Arcane Charge damage, all spell damage) > Haste > Crit > Versatility. NOTE: All secondary stats are very close for Arcane. Simming yourself is especially important for this spec.
 GEMS: 1x Telluric Eversong Diamond (not Indecipherable — Arcane benefits from the mana/Mastery bonus) + one gem of EACH color (e.g. Flawless Quick Amethyst + Flawless Quick Garnet + Flawless Deadly Peridot + Flawless Deadly Lapis) to maximize the Telluric Movement Speed bonus. Method.gg confirmed.
 ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Eyes of the Eagle (updated March 16 2026 — Icy Veins says slightly better than stat enchants in almost all situations)
@@ -238,8 +357,8 @@ GEMS: 1x Indecipherable Eversong Diamond + Flawless Masterful Amethyst (Mastery)
 ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Mastery or Crit (sim)
 FLASK: Flask of the Shattered Sun (Crit). Potion: Potion of Recklessness with CDs
 WEAPON OIL: Thalassian Phoenix Oil
-BEST CRAFT: Ring (non-Tier). Staff second (Missive: Versatility + Crit).
-KEY TIPS: Versatility being #1 is a MIDNIGHT-SPECIFIC CHANGE. Previous expansions prioritised Haste — don't follow older Frost guides. Ray of Frost guarantees 4 Hand of Frost summons — highest-priority cast.`,
+BEST CRAFT: Ring (non-Tier). Staff second (Missive: Mastery + Crit).
+KEY TIPS: Mastery and Crit are CO-EQUAL top stats — do NOT stack Versatility (it is the lowest value secondary for Frost). Ray of Frost guarantees 4 Hand of Frost summons and is your highest-priority cast — never cut the channel short.`,
 
   // ══════════════════════════════════════════════════════════════
   // MONK
@@ -294,15 +413,15 @@ BEST CRAFT: Ring (non-Tier, Missive: Haste + Mastery). Weapon second.
 KEY TIPS: Spread Beacons to ranged players — they are often further away, increasing your Mastery effectiveness via Beacon of the Lightbringer. You already gain a LOT of Crit from talents — avoid stacking it on gear.`,
 
   "Protection Paladin":`SPEC: Protection Paladin (Tank)
-APEX TALENT — Vanguard: Judgment may grant Vanguard, empowering Avenger's Shield to deal Holy damage in a line. Shield of the Righteous +50% damage, hits 4 additional enemies. Judgment +10% damage.
-HERO TALENTS: Mountain Thane (M+ — Thunder Clap → Thunder Blast, Rage feedback loop) | Colossus (Raid — Demolish ability, bleed amplification, methodical burst windows). NOTE: Previous spec listed "Phalanx" as hero talent — this does not exist.
+APEX TALENT — Glory of the Vanguard (all 4 points): Rank 1: Judgment has a chance to grant Vanguard — next Avenger's Shield deals Holy damage to all enemies between you and target. Rank 2/3: Consuming Vanguard grants Holy Power; Judgment +10%/+20% damage. Rank 4: Every Avenger's Shield during Avenging Wrath auto-applies Vanguard; Shield of the Righteous +20% damage to primary target + AoE splash. Note: "Vanguard" is the proc buff name; the apex itself is called "Glory of the Vanguard."
+HERO TALENTS: Templar (recommended for most content — Hammer of Light burst via Divine Toll, Divine Resonance Avenger's Shield chain, higher damage) | Lightsmith (M+ beginners / utility focus — Holy Bulwark group absorb shield, Sacred Weapon buff, Rite of Sanctification replaces weapon oil). NOTE: Both are Paladin hero talents. Mountain Thane and Colossus are Warrior hero talents — do not confuse them.
 STAT PRIORITY: Strength > Versatility (damage reduction, scales SotR burst) > Haste (faster Holy Power = more SotR = more Vanguard fishing) > Mastery (Divine Bulwark — block chance) > Crit. All secondaries very close — ilvl wins.
 GEMS: 1x Indecipherable Eversong Diamond + Flawless Versatile Garnet
 ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Versatility
 FLASK: Flask of the Shattered Sun or Flask of the Magisters
-WEAPON OIL: Thalassian Phoenix Oil
+WEAPON OIL: Thalassian Phoenix Oil (Templar) | Rite of Sanctification (Lightsmith ONLY — this replaces weapon oil entirely, do not use Phoenix Oil as Lightsmith)
 BEST CRAFT: 1H Weapon (Missive: Versatility + Haste). Belt second. Never craft Shoulders, Chest, or Gloves (all Tier).
-KEY TIPS: Mountain Thane creates a Rage feedback loop — more Thunder Blasts = more Shield Slams = more Rage. Colossus requires planning Demolish casts around Rage — more methodical playstyle.`,
+KEY TIPS: Templar activates Hammer of Light via Divine Toll — align Divine Toll with Avenging Wrath every 60s. Lightsmith: Holy Bulwark is a group absorb — time it before predictable high-damage moments.`,
 
   "Retribution":`SPEC: Retribution Paladin (DPS)
 APEX TALENT — Light Within: Focused on Art of War and Righteous Cause procs, providing larger damage increases and extra effects when they proc. Prioritize using Blade of Justice when procs occur for significant damage increase. Bonus can mostly be treated as passive but don't waste proc windows.
@@ -369,14 +488,14 @@ KEY TIPS: Let Envenom intentionally expire after a long chain to trigger maximum
 
   "Outlaw":`SPEC: Outlaw Rogue (DPS)
 APEX TALENT — Gravedigger: Each Between the Eyes cast has a chance for extra damage buff stack. Dispatch damage increased (x2 points). Slowly builds toward a free BtE cast (no CD, no cost).
-HERO TALENTS: Fatebound (reliable, consistent — Fatebound Coin flip mechanic, Lucky Break) | Trickster (M+ — Unseen Blade, Sting Like a Bee)
+HERO TALENTS: Fatebound (RECOMMENDED for all content — consistent coin-flip mechanic, fewer buttons, higher ceiling in M+ AoE with Nimble Flurry, easier to execute) | Trickster (AoE alternative — Unseen Blade/Coup de Grace; Icy Veins: "trails behind Fatebound quite dramatically in every content" in Midnight. Only consider Trickster if you specifically enjoy the playstyle.)
 STAT PRIORITY: Agility > Haste (Sinister Strike extra hits, shorter AR CD) > Crit (Sinister Strike extra hit, Opportunity procs) > Versatility > Mastery (Main Gauche — lowest value)
 GEMS: 1x Indecipherable Eversong Diamond + Flawless Quick Amethyst (Haste) or Flawless Deadly Amethyst (Crit)
 ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Haste or Crit (sim)
 FLASK: Flask of the Shattered Sun (Crit)
 WEAPON OIL: Thalassian Phoenix Oil
 BEST CRAFT: 1H Weapon (Missive: Haste + Crit). Bracers second.
-KEY TIPS: Fatebound is reliable for all content. Trickster for M+ AoE focus. Adrenaline Rush uptime reduced in Midnight — space cooldown windows more deliberately.`,
+KEY TIPS: Fatebound is the default for all content — use it. Trickster is a playable alternative if you like the theme, but it underperforms Fatebound in every scenario in Midnight. Adrenaline Rush uptime reduced in Midnight — space cooldown windows more deliberately.`,
 
   "Subtlety":`SPEC: Subtlety Rogue (DPS)
 APEX TALENT — Ancient Arts: CP generators sometimes spawn a shadow clone. Clone spawns generate Shadow Techniques stacks. At 5+ Shadow Techniques after a CP generator, next finisher deals bonus Shadow damage via clone + refunds CPs. Shadow Dance duration scales with Haste via Deepening Shadows.
@@ -402,7 +521,7 @@ ENCHANTS: Weapon — Acuity of the Ren'dorei. Ring — Mastery or Eyes of the Ea
 FLASK: Flask of the Magisters (Mastery — top secondary for Elemental)
 WEAPON OIL: Thalassian Phoenix Oil
 BEST CRAFT: Staff or MH+OH (Missive: Crit + Haste). Belt second.
-KEY TIPS: Crit is the best secondary by a notable margin — both your chance AND damage scale with Crit investment. Stormbringer is mandatory for M+ and raid competitive play.`,
+KEY TIPS: Mastery is your top secondary — Feedback Loop makes Elemental Overloads far more valuable, and Mastery scales all of them. Do NOT prioritise Crit over Mastery despite the Feedback Loop Crit bonuses — Mastery still wins. Stormbringer is mandatory for M+ and raid competitive play.`,
 
   "Enhancement":`SPEC: Enhancement Shaman (DPS)
 APEX TALENT — Storm Unleashed: Crash Lightning can reset its own CD and deal repeated strikes, building Maelstrom Weapon stacks. Strong burst AoE.
@@ -489,7 +608,7 @@ BEST CRAFT: 2H Weapon (4 Sparks, Missive: Strength + Mastery). Belt second.
 KEY TIPS: CRIT IS YOUR WORST SECONDARY — do not gem or enchant for it. Mastery + Haste are co-equal priorities. Mountain Thane for M+, Slayer for raid. Rampaging Ruin (multi-target Rampage cleave talent) only valuable on 5+ targets due to single-target damage penalty.`,
 
   "Protection Warrior":`SPEC: Protection Warrior (Tank)
-APEX TALENT — Phalanx Strike: Shield Slam critical strikes send defensive shockwaves providing group survivability. Shield of the Righteous +50% damage, hits 4 additional enemies. Vanguard empowers Avenger's Shield on Judgment proc.
+APEX TALENT — Phalanx (all 4 points mandatory): Rank 1: Thunder Clap buffs next Shield Slam to deal AoE cone damage and reduce target damage by 5% for 8s. Rank 2: Increases Thunder Clap and Phalanx wave damage by 10% per rank. Rank 3/4: Increases Shield Slam damage and Crit chance by 10% while Shield Block is active. Purely offensive — no required gameplay changes, just press your rotation correctly.
 HERO TALENTS: Mountain Thane (M+ — Thunder Blast from Thunder Clap, Rage feedback loop, faster Shield Slams, Lightning Strikes synergy) | Colossus (Raid — Demolish truck-hit, bleed amp via Rage of Korroth, methodical playstyle)
 STAT PRIORITY: Strength > Haste (more Rage = more Ignore Pain proportional to Haste increase; shorter Anger Management CDs) > Versatility (constant damage reduction including magic, highly valuable on magic-heavy fights) > Critical Strike (increases parry chance for block, also damage) > Mastery (Critical Block — "worst" secondary but all stats close) NOTE: Versatility becomes #1 on magic-heavy encounters.
 GEMS: 1x Indecipherable Eversong Diamond + Flawless Versatile Garnet (Versatility)
@@ -500,32 +619,71 @@ BEST CRAFT: 1H Weapon (Missive: Versatility + Haste). Belt second.
 KEY TIPS: Versatility scales your Ignore Pain healing proportionally. On magic-heavy fights (common in raid), Versatility jumps to #1 value. Mountain Thane creates positive Rage feedback — more Thunder Blasts → more Shield Slams → more Rage. Colossus's Demolish can be cancelled to reapply it — advanced tech.`,
 };
 
+
+// ══════════════════════════════════════════════════════════════════
+// LAYER C — SPEC CORRECTIONS
+// Reviewed overrides from the live verification pipeline.
+// These carry the HIGHEST authority — they override Class and Spec
+// knowledge above when conflicting.
+//
+// HOW TO ADD A CORRECTION:
+//   1. Discord alert arrives from api/corrections.js (live pipeline)
+//   2. Developer verifies the cited source
+//   3. Add an entry below with source URL + date
+//   4. Deploy → all future users get the corrected knowledge
+//
+// Format: "Spec Key": "CORRECTION (source, date): override text"
+// ══════════════════════════════════════════════════════════════════
+
+export const SPEC_CORRECTIONS = {
+  // Empty at launch — all known corrections already incorporated
+  // into SPEC_KNOWLEDGE above during the 2026-03-28 audit.
+  //
+  // Example of how entries look once live:
+  // "Frost DK": "CORRECTION (icy-veins.com, 2026-04-15): After 12.0.5 tuning, Crit now slightly edges Mastery for Frost DK in AoE builds. Mastery still recommended for Breath of Sindragosa ST builds.",
+};
+
 export function getSpecKnowledge(activeSpec, activeClass) {
   const spec = (activeSpec || "").toLowerCase().trim();
   const cls  = (activeClass || "").toLowerCase().trim();
 
-  // Disambiguation: specs that share names across classes
-  if (spec === "frost"        && cls.includes("death"))   return SPEC_KNOWLEDGE["Frost DK"]           || "";
-  if (spec === "frost"        && cls.includes("mage"))    return SPEC_KNOWLEDGE["Frost Mage"]         || "";
-  if (spec === "frost dk"                              )   return SPEC_KNOWLEDGE["Frost DK"]           || "";
-  if (spec === "frost mage"                            )   return SPEC_KNOWLEDGE["Frost Mage"]         || "";
-  if (spec === "frost"        && !cls                  )   return SPEC_KNOWLEDGE["Frost DK"]           || ""; // safe default
-  if (spec === "holy"         && cls.includes("paladin")) return SPEC_KNOWLEDGE["Holy Paladin"]       || "";
-  if (spec === "holy"         && cls.includes("priest"))  return SPEC_KNOWLEDGE["Holy Priest"]        || "";
-  if (spec === "restoration"  && cls.includes("druid"))   return SPEC_KNOWLEDGE["Restoration Druid"]  || "";
-  if (spec === "restoration"  && cls.includes("shaman"))  return SPEC_KNOWLEDGE["Restoration Shaman"] || "";
-  if (spec === "protection"   && cls.includes("paladin")) return SPEC_KNOWLEDGE["Protection Paladin"] || "";
-  if (spec === "protection"   && cls.includes("warrior")) return SPEC_KNOWLEDGE["Protection Warrior"] || "";
-  if (spec === "beast mastery"                         )   return SPEC_KNOWLEDGE["Beast Mastery"]     || "";
+  // ── Step 1: Resolve canonical spec key ─────────────────────────
+  let specKey = null;
+  if      (spec === "frost"        && cls.includes("death"))    specKey = "Frost DK";
+  else if (spec === "frost"        && cls.includes("mage"))     specKey = "Frost Mage";
+  else if (spec === "frost dk"                             )     specKey = "Frost DK";
+  else if (spec === "frost mage"                           )     specKey = "Frost Mage";
+  else if (spec === "frost"        && !cls                 )     specKey = "Frost DK";
+  else if (spec === "holy"         && cls.includes("paladin"))   specKey = "Holy Paladin";
+  else if (spec === "holy"         && cls.includes("priest") )   specKey = "Holy Priest";
+  else if (spec === "restoration"  && cls.includes("druid")  )   specKey = "Restoration Druid";
+  else if (spec === "restoration"  && cls.includes("shaman") )   specKey = "Restoration Shaman";
+  else if (spec === "protection"   && cls.includes("paladin"))   specKey = "Protection Paladin";
+  else if (spec === "protection"   && cls.includes("warrior"))   specKey = "Protection Warrior";
+  else if (spec === "beast mastery"                        )     specKey = "Beast Mastery";
+  else if (SPEC_KNOWLEDGE[activeSpec]                      )     specKey = activeSpec;
+  else {
+    specKey = Object.keys(SPEC_KNOWLEDGE).find(k =>
+      k.toLowerCase() === spec || k.toLowerCase().startsWith(spec)
+    ) || null;
+  }
 
-  // Direct match
-  if (SPEC_KNOWLEDGE[activeSpec]) return SPEC_KNOWLEDGE[activeSpec];
+  // ── Step 2: Assemble layered knowledge ─────────────────────────
+  // Layer A: shared class mechanics (utility, rules that apply to all specs)
+  // Layer B: spec-specific overrides (stat priority, apex, hero talents, gems)
+  // Layer C: active corrections (reviewed overrides from live verification pipeline)
+  const classBlock      = CLASS_KNOWLEDGE[activeClass] || "";
+  const specBlock       = specKey ? (SPEC_KNOWLEDGE[specKey] || "") : "";
+  const correctionBlock = specKey ? (SPEC_CORRECTIONS[specKey] || "") : "";
 
-  // Fuzzy match
-  const fuzzy = Object.keys(SPEC_KNOWLEDGE).find(k =>
-    k.toLowerCase() === spec || k.toLowerCase().startsWith(spec)
-  );
-  return fuzzy
-    ? SPEC_KNOWLEDGE[fuzzy]
-    : "\nNo spec-specific data — give best general advice for this class based on the gear data provided.";
+  if (!classBlock && !specBlock) {
+    return "\nNo spec-specific data — give best general advice for this class based on the gear data provided.";
+  }
+
+  const parts = [];
+  if (classBlock)      parts.push(`=== CLASS KNOWLEDGE: ${activeClass} ===\n${classBlock}`);
+  if (specBlock)       parts.push(`=== SPEC KNOWLEDGE: ${specKey || activeSpec} ===\n${specBlock}`);
+  if (correctionBlock) parts.push(`=== ACTIVE CORRECTIONS (highest authority — override class/spec above if conflicting) ===\n${correctionBlock}`);
+
+  return parts.join("\n\n");
 }
