@@ -992,6 +992,13 @@ export default function Vaultwright() {
         if (p.type)  setDetectedClass(p.type);
         if (p.specs?.[0]?.spec) setDetectedSpec(p.specs[0].spec);
       }
+      // No API keys configured — skip the confirmation screen and go straight
+      // to analysis. No reason to make the user click twice for less.
+      if (data.placeholder) {
+        setWclLoading(false);
+        setTimeout(sendInitial, 0);
+        return;
+      }
     } catch (e) { setWclError(e.message || "Failed to load log. Check the URL."); }
     setWclLoading(false);
   };
@@ -1429,14 +1436,12 @@ Where am I actually equal to or ahead of my friend?`;
                       <p style={{ color: T.red, fontSize: 14, margin: 0 }}>{wclError}</p>
                     </div>
                   )}
-                  {wclData && (
+                  {wclData && !wclData.placeholder && (
                     <>
                       <div style={{ marginTop: 12, padding: "10px 14px", background: `${T.green}12`, border: `1px solid ${T.green}40`, borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
                         <CheckCircle2 size={16} color={T.green} />
                         <span style={{ color: T.green, fontSize: 14, fontWeight: 600 }}>
-                          {wclData.placeholder
-                            ? `Log loaded — Vaultwright will advise on spec and gearing without fight-specific data`
-                            : `Log loaded — ${wclData.report?.fights?.length || 0} fight(s) found`}
+                          Log loaded — {wclData.report?.fights?.length || 0} fight(s) found
                         </span>
                       </div>
                       <button style={{ ...S.primaryBtn, width: "100%", marginTop: 14 }} onClick={sendInitial}>
