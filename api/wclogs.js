@@ -114,18 +114,22 @@ export default async function handler(req, res) {
     const report = data.data?.reportData?.report;
     if (!report) return res.status(404).json({ error: "Report not found or private" });
 
-    // Extract the relevant player from playerDetails if sourceId given
+    // Always extract all players so the UI can show a "who are you?" picker.
+    // If sourceId is in the URL, pre-select that player automatically.
+    let allPlayers = [];
     let playerInfo = null;
-    if (parsed.sourceId && report.playerDetails) {
+    if (report.playerDetails) {
       const details = typeof report.playerDetails === "string"
         ? JSON.parse(report.playerDetails)
         : report.playerDetails;
-      const allPlayers = [
-        ...(details?.data?.playerDetails?.dps || []),
-        ...(details?.data?.playerDetails?.healers || []),
-        ...(details?.data?.playerDetails?.tanks || []),
+      allPlayers = [
+        ...(details?.data?.playerDetails?.dps     || []).map(p => ({ ...p, role: "dps"    })),
+        ...(details?.data?.playerDetails?.healers  || []).map(p => ({ ...p, role: "healer" })),
+        ...(details?.data?.playerDetails?.tanks    || []).map(p => ({ ...p, role: "tank"   })),
       ];
-      playerInfo = allPlayers.find(p => p.id === parsed.sourceId) || allPlayers[0];
+      if (parsed.sourceId) {
+        playerInfo = allPlayers.find(p => p.id === parsed.sourceId) || null;
+      }
     }
 
     res.status(200).json({
@@ -133,7 +137,8 @@ export default async function handler(req, res) {
       report: {
         title:    report.title,
         fights:   report.fights || [],
-        player:   playerInfo,
+        players:  allPlayers,  // full roster for picker
+        player:   playerInfo,  // pre-matched if sourceId in URL, else null
         rankings: report.rankings,
       },
       parsed,
