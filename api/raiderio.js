@@ -16,18 +16,29 @@ export default async function handler(req, res) {
 
   const url = `https://raider.io/api/v1/characters/profile?region=${encodeURIComponent(region)}&realm=${encodeURIComponent(realm)}&name=${encodeURIComponent(name)}&fields=gear`;
 
+  // SEC-05: Enforce an 8-second timeout on the upstream fetch.
+  // Without this the Vercel function hangs until the platform kills it (10 s),
+  // consuming the function slot and leaving the user with no feedback.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+
   try {
     const upstream = await fetch(url, {
-      headers: {
-        "User-Agent": "Apex-WoW-Advisor/1.0",
-      },
+      headers: { "User-Agent": "Apex-WoW-Advisor/1.0" },
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     const data = await upstream.json();
 
     // Pass through the exact status code from Raider.IO
     res.status(upstream.status).json(data);
   } catch (err) {
+    clearTimeout(timer);
+    if (err.name === "AbortError") {
+      console.error("Raider.IO timeout");
+      return res.status(504).json({ error: "Raider.IO took too long to respond. Try again." });
+    }
     console.error("Raider.IO proxy error:", err);
     res.status(502).json({ error: "Failed to reach Raider.IO. Try again in a moment." });
   }
