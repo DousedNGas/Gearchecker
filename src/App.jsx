@@ -784,6 +784,7 @@ export default function Vaultwright() {
   const [wclData,    setWclData]    = useState(null);
   const [wclLoading, setWclLoading] = useState(false);
   const [wclError,   setWclError]   = useState("");
+  const [wclSpecPicked, setWclSpecPicked] = useState(false); // true once user has confirmed their class+spec
 
   const [simcString, setSimcString] = useState("");
   const [simcParsed, setSimcParsed] = useState(null);
@@ -986,17 +987,22 @@ export default function Vaultwright() {
       }
       const data = await res.json();
       setWclData(data);
-      // If WCL returned player info, use it for class/spec detection
+      // If WCL pre-matched a player via sourceId, set class/spec and go straight to analysis
       if (data.report?.player) {
         const p = data.report.player;
-        if (p.type)  setDetectedClass(p.type);
-        if (p.specs?.[0]?.spec) setDetectedSpec(p.specs[0].spec);
+        const pSpec = p.specs?.[0]?.spec || "";
+        if (p.type) setDetectedClass(p.type);
+        if (pSpec)  setDetectedSpec(pSpec);
+        if (p.type && pSpec) {
+          // sourceId matched a specific player — skip the picker entirely
+          setWclLoading(false);
+          setTimeout(sendInitial, 0);
+          return;
+        }
       }
-      // No API keys configured — skip the confirmation screen and go straight
-      // to analysis. No reason to make the user click twice for less.
+      // Placeholder (no WCL API keys) — nothing useful to do, show skip option
       if (data.placeholder) {
         setWclLoading(false);
-        setTimeout(sendInitial, 0);
         return;
       }
     } catch (e) { setWclError(e.message || "Failed to load log. Check the URL."); }
@@ -1253,7 +1259,7 @@ Where am I actually equal to or ahead of my friend?`;
     if (chatHistory.length > 0 && !window.confirm("Start a new session? Your current analysis will be lost.")) return;
     setStep(0); setInputMode(null); setDetectedClass(""); setDetectedSpec("");
     setDetectedGear([]); setGearSummary(""); setRioUrl(""); setRioError("");
-    setWclUrl(""); setWclData(null); setWclError("");
+    setWclUrl(""); setWclData(null); setWclError(""); setWclSpecPicked(false);
     setSimcString(""); setSimcParsed(null);
     setContentFocus(null);
     setFriendUrl(""); setFriendData(null); setFriendError("");
@@ -1417,13 +1423,13 @@ Where am I actually equal to or ahead of my friend?`;
                 <>
                   <span style={S.label}>Warcraft Logs URL</span>
                   <p style={{ color: T.textSub, fontSize: 14, marginBottom: 10, marginTop: 0, lineHeight: 1.5 }}>
-                    Paste a log URL — ideally a recent M+ run or raid kill. Vaultwright will analyse your actual performance patterns.
+                    Paste a log URL from a recent M+ run or raid. Vaultwright will pull the players from the log and let you pick your character.
                   </p>
                   <p style={{ color: T.textDim, fontSize: 12, marginBottom: 14, fontStyle: "italic", marginTop: 0 }}>
-                    e.g. warcraftlogs.com/reports/abc123#fight=last&source=5
+                    e.g. warcraftlogs.com/reports/abc123#fight=last
                   </p>
                   <input style={S.input} placeholder="warcraftlogs.com/reports/..."
-                    value={wclUrl} onChange={e => setWclUrl(e.target.value)}
+                    value={wclUrl} onChange={e => { setWclUrl(e.target.value); setWclData(null); setDetectedClass(""); setDetectedSpec(""); }}
                     onKeyDown={e => e.key === "Enter" && fetchWCL()} />
                   <button style={{ ...S.primaryBtn, width: "100%", marginTop: 12, opacity: wclLoading || !wclUrl.trim() ? 0.45 : 1 }}
                     onClick={fetchWCL} disabled={wclLoading || !wclUrl.trim()}>
@@ -1436,22 +1442,60 @@ Where am I actually equal to or ahead of my friend?`;
                       <p style={{ color: T.red, fontSize: 14, margin: 0 }}>{wclError}</p>
                     </div>
                   )}
-                  {wclData && !wclData.placeholder && (
-                    <>
-                      <div style={{ marginTop: 12, padding: "10px 14px", background: `${T.green}12`, border: `1px solid ${T.green}40`, borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                        <CheckCircle2 size={16} color={T.green} />
-                        <span style={{ color: T.green, fontSize: 14, fontWeight: 600 }}>
-                          Log loaded — {wclData.report?.fights?.length || 0} fight(s) found
-                        </span>
+
+                  {/* Player picker — shown once real WCL data loads */}
+                  {wclData && !wclData.placeholder && (wclData.report?.players?.length > 0) && (
+                    <div style={{ marginTop: 16 }}>
+                      <span style={S.label}>Who are you in this log?</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {wclData.report.players.map(p => {
+                          const pClassData = CLASSES.find(c => c.name === p.type);
+                          const spec       = p.specs?.[0]?.spec || "";
+                          const isSelected = detectedClass === p.type && detectedSpec === spec;
+                          return (
+                            <button key={p.id} onClick={() => { setDetectedClass(p.type); setDetectedSpec(spec); }}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 12,
+                                padding: "12px 14px", borderRadius: 10, cursor: "pointer", textAlign: "left",
+                                background: isSelected ? `${T.gold}12` : T.bg,
+                                border: `1.5px solid ${isSelected ? T.gold : T.border}`,
+                                transition: "all 0.15s", WebkitTapHighlightColor: "transparent",
+                              }}>
+                              {pClassData && <ClassIcon name={pClassData.name} color={pClassData.color} size={28} />}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ color: isSelected ? T.goldBright : T.text, fontSize: 14, fontWeight: 600, margin: 0 }}>{p.name}</p>
+                                <p style={{ color: T.textSub, fontSize: 12, margin: "2px 0 0" }}>
+                                  {spec ? `${spec} ` : ""}{p.type}
+                                  <span style={{ color: T.textDim, marginLeft: 6 }}>
+                                    {p.role === "tank" ? "· Tank" : p.role === "healer" ? "· Healer" : "· DPS"}
+                                  </span>
+                                </p>
+                              </div>
+                              {isSelected && <CheckCircle2 size={18} color={T.gold} />}
+                            </button>
+                          );
+                        })}
                       </div>
-                      <button style={{ ...S.primaryBtn, width: "100%", marginTop: 14 }} onClick={sendInitial}>
-                        Find My Problem →
-                      </button>
-                    </>
+                    </div>
                   )}
+
+                  {/* Proceed once a player is selected */}
+                  {wclData && !wclData.placeholder && detectedClass && detectedSpec && (
+                    <button style={{ ...S.primaryBtn, width: "100%", marginTop: 14 }} onClick={sendInitial}>
+                      Analyse as {detectedSpec} {detectedClass} →
+                    </button>
+                  )}
+
+                  {/* No players returned (e.g. private log / no sourceId) — fall back to skip */}
+                  {wclData && !wclData.placeholder && !(wclData.report?.players?.length > 0) && (
+                    <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+                      <button style={S.ghostBtn} onClick={sendInitial}>Continue without player data</button>
+                    </div>
+                  )}
+
                   {!wclData && (
                     <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
-                      <button style={S.ghostBtn} onClick={sendInitial}>Skip — paste URL later</button>
+                      <button style={S.ghostBtn} onClick={sendInitial}>Skip — general advice only</button>
                     </div>
                   )}
                 </>
