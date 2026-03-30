@@ -1486,13 +1486,31 @@ Where am I actually equal to or ahead of my friend?`;
                     </button>
                   )}
 
-                  {/* No players returned (e.g. private log / no sourceId) — fall back to skip */}
-                  {wclData && !wclData.placeholder && !(wclData.report?.players?.length > 0) && (
-                    <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
-                      <button style={S.ghostBtn} onClick={sendInitial}>Continue without player data</button>
+                  {/* Placeholder: WCL API keys not configured */}
+                  {wclData?.placeholder && (
+                    <div style={{ marginTop: 12, padding: "12px 14px", background: `${T.gold}0d`, border: `1px solid ${T.gold}30`, borderRadius: 8, display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <AlertCircle size={16} color={T.gold} style={{ flexShrink: 0, marginTop: 1 }} />
+                      <div>
+                        <p style={{ color: T.gold, fontSize: 13, fontWeight: 600, margin: "0 0 4px" }}>Log loaded — no fight data available</p>
+                        <p style={{ color: T.textSub, fontSize: 13, margin: "0 0 10px", lineHeight: 1.5 }}>Vaultwright will give spec advice without performance analysis. For full fight data, add your WCL API keys in Vercel.</p>
+                        <button style={{ ...S.ghostBtn, padding: "8px 16px", fontSize: 13 }} onClick={sendInitial}>Continue anyway →</button>
+                      </div>
                     </div>
                   )}
 
+                  {/* Real log but no players (private log) */}
+                  {wclData && !wclData.placeholder && !(wclData.report?.players?.length > 0) && (
+                    <div style={{ marginTop: 12, padding: "12px 14px", background: `${T.gold}0d`, border: `1px solid ${T.gold}30`, borderRadius: 8, display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <AlertCircle size={16} color={T.gold} style={{ flexShrink: 0, marginTop: 1 }} />
+                      <div>
+                        <p style={{ color: T.gold, fontSize: 13, fontWeight: 600, margin: "0 0 4px" }}>Log loaded — no player list found</p>
+                        <p style={{ color: T.textSub, fontSize: 13, margin: "0 0 10px", lineHeight: 1.5 }}>This log may be private or missing player details. Try adding <code style={{ color: T.gold }}>#source=N</code> to the URL to pin your character.</p>
+                        <button style={{ ...S.ghostBtn, padding: "8px 16px", fontSize: 13 }} onClick={sendInitial}>Continue without player data →</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pre-load skip */}
                   {!wclData && (
                     <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
                       <button style={S.ghostBtn} onClick={sendInitial}>Skip — general advice only</button>
