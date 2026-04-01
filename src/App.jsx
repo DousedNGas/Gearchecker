@@ -1492,7 +1492,7 @@ Where am I actually equal to or ahead of my friend?`;
                       <AlertCircle size={16} color={T.gold} style={{ flexShrink: 0, marginTop: 1 }} />
                       <div>
                         <p style={{ color: T.gold, fontSize: 13, fontWeight: 600, margin: "0 0 4px" }}>Log loaded — no fight data available</p>
-                        <p style={{ color: T.textSub, fontSize: 13, margin: "0 0 10px", lineHeight: 1.5 }}>Vaultwright will give spec advice without performance analysis. For full fight data, add your WCL API keys in Vercel.</p>
+                        <p style={{ color: T.textSub, fontSize: 13, margin: "0 0 10px", lineHeight: 1.5 }}>Vaultwright will give spec advice without performance analysis. Full fight data requires Warcraft Logs API credentials to be configured.</p>
                         <button style={{ ...S.ghostBtn, padding: "8px 16px", fontSize: 13 }} onClick={sendInitial}>Continue anyway →</button>
                       </div>
                     </div>
